@@ -8,8 +8,8 @@
  * Generates coaching suggestions based on validated patterns.
  *
  * Pipeline:
- *   acquireLock → loadPatterns → checkExisting → generateSuggestions →
- *   writeSuggestions → expireOld → updateMetrics → releaseLock
+ *   acquireLock → loadPatterns → filterByPreferences → checkExisting →
+ *   generateSuggestions → writeSuggestions → expireOld → updateMetrics → releaseLock
  */
 
 import { createStep, createWorkflow } from "@mastra/core/workflows";
@@ -31,6 +31,7 @@ import {
 import type { AdaptationPattern, CoachingPriority, CoachingSuggestion, CoachingType } from "../lib/adaptation-types";
 import { COACHING_DEDUP_WINDOW_DAYS, COACHING_EXPIRATION_DAYS } from "../lib/adaptation-types";
 import { getAdaptationConfig } from "../lib/config";
+import { getUserPreferencesProcessor } from "../processors/user-preferences";
 
 // ============================================================================
 // Schemas
@@ -138,6 +139,66 @@ const loadPatternsStep = createStep({
     return {
       resourceId: inputData.resourceId,
       candidates,
+      pendingSuggestions,
+      recentlyDelivered,
+    };
+  },
+});
+
+// ============================================================================
+// Step 2.5: Filter by User Preferences
+// ============================================================================
+
+const filterByPreferencesStep = createStep({
+  id: "filter-by-preferences",
+  description: "Filter patterns by user coaching preferences",
+  inputSchema: loadPatternsOutputSchema,
+  outputSchema: loadPatternsOutputSchema,
+
+  execute: async ({ inputData }) => {
+    const { resourceId, candidates, pendingSuggestions, recentlyDelivered } = inputData;
+
+    if (candidates.length === 0) {
+      return inputData;
+    }
+
+    // Load user preferences
+    const prefsProcessor = getUserPreferencesProcessor();
+    const prefs = await prefsProcessor.loadPreferences(resourceId);
+
+    // Filter by coaching preferences
+    const filtered = (candidates as AdaptationPattern[]).filter((pattern) => {
+      // Respect coachingFrequency
+      if (prefs.coachingFrequency === "never") {
+        return false;
+      }
+      if (prefs.coachingFrequency === "rare" && Math.random() > 0.3) {
+        return false;
+      }
+
+      // Respect topic preferences
+      const patternText = pattern.pattern.toLowerCase();
+
+      // Skip patterns about topics user wants to avoid
+      if (prefs.avoidCoachingTopics?.some((t) => patternText.includes(t.toLowerCase()))) {
+        return false;
+      }
+
+      // If user specified topics, only include patterns about those topics
+      if (prefs.coachingTopics && prefs.coachingTopics.length > 0) {
+        if (!prefs.coachingTopics.some((t) => patternText.includes(t.toLowerCase()))) {
+          return false;
+        }
+      }
+
+      return true;
+    });
+
+    console.log(`[Coach Workflow] ${filtered.length} patterns after preference filtering (was ${candidates.length})`);
+
+    return {
+      resourceId,
+      candidates: filtered,
       pendingSuggestions,
       recentlyDelivered,
     };
@@ -435,6 +496,7 @@ export const coachWorkflow = createWorkflow({
 })
   .then(acquireLockStep)
   .then(loadPatternsStep)
+  .then(filterByPreferencesStep)
   .then(checkExistingStep)
   .then(generateSuggestionsStep)
   .then(writeSuggestionsStep)
