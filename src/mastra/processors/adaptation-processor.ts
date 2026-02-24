@@ -10,20 +10,12 @@
  * Part of the Observe → Reflect → Coach adaptation pipeline.
  */
 
-import type { ProcessInputArgs, Processor } from "@mastra/core/processors";
+import type { MastraDBMessage } from "@mastra/core/agent";
+import type { ProcessInputArgs, ProcessInputResult, Processor } from "@mastra/core/processors";
 import { getAdaptationConfig } from "../lib/config";
 import { loadActivePatterns, ensureAdaptationDirs } from "../lib/adaptation-storage";
 import { claimMatchingSuggestion } from "../lib/adaptation-claim";
 import type { AdaptationPattern, CoachingSuggestion } from "../lib/adaptation-types";
-
-// Message type for processor
-interface Message {
-  id: string;
-  role: string;
-  content: string;
-  createdAt: Date;
-  source?: string;
-}
 
 /**
  * Configuration options for AdaptationProcessor
@@ -86,8 +78,7 @@ export class AdaptationProcessor implements Processor<"adaptation"> {
   /**
    * Process input messages, injecting adaptation context
    */
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  async processInput(args: ProcessInputArgs): Promise<any[]> {
+  async processInput(args: ProcessInputArgs): Promise<ProcessInputResult> {
     const { messages } = args;
 
     try {
@@ -129,13 +120,15 @@ export class AdaptationProcessor implements Processor<"adaptation"> {
         );
       }
 
-      // Create adaptation message
-      const adaptationMessage: Message = {
+      // Create adaptation message using proper MastraDBMessage format
+      const adaptationMessage: MastraDBMessage = {
         id: `adaptation-${Date.now()}`,
         role: "system",
-        content: contextMessage,
+        content: {
+          format: 2,
+          parts: [{ type: "text", text: contextMessage }],
+        },
         createdAt: new Date(),
-        source: "adaptation",
       };
 
       // Inject after other system messages but before user messages

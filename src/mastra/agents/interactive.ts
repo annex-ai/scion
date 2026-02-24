@@ -25,6 +25,7 @@ import { loadSoulFiles } from "../lib/parsers";
 import { mcpClient } from "../mcp_client";
 import { sharedMemory } from "../memory";
 import { getAdaptationProcessor } from "../processors/adaptation-processor";
+import { getUserPreferencesProcessor } from "../processors/user-preferences";
 import { AdversarialPatternDetector } from "../processors/adversarial-detector";
 import { SecretMaskProcessor } from "../processors/secret-mask-processor";
 import { SecretSanitizerProcessor } from "../processors/secret-sanitizer-processor";
@@ -300,7 +301,9 @@ export const interactiveAgent = new Agent({
     ...contextProcessors,
     // 5. Skills loading
     new SkillsProcessor({ workspace }),
-    // 6. Adaptation (learned patterns + coaching)
+    // 6. User preferences
+    getUserPreferencesProcessor(),
+    // 7. Adaptation (learned patterns + coaching)
     getAdaptationProcessor(),
     // Log skills info
     {
