@@ -141,18 +141,6 @@ export interface AdaptationMetrics {
   delivery: DeliveryMetrics;
 }
 
-// --- Configuration ---
-
-export interface AdaptationConfig {
-  enabled: boolean;
-  maxMessagesPerRun: number;
-  maxInstructionPatterns: number;
-  observerBatchSize: number;
-  coachingEnabled: boolean;
-  coachingMaxPending: number;
-  coachingDedupWindowDays: number;
-}
-
 // --- Constants ---
 
 export const COACHING_EXPIRATION_DAYS: Record<CoachingPriority, number> = {
