@@ -63,6 +63,18 @@ const UpdatePreferencesInputSchema = z.object({
     })
     .optional()
     .describe("Set a custom key-value preference"),
+
+  // Coaching preferences (for adaptation system)
+  coachingFrequency: z
+    .enum(["always", "often", "rare", "never"])
+    .optional()
+    .describe("How often to show coaching suggestions"),
+
+  coachingStyle: z.enum(["direct", "subtle", "socratic"]).optional().describe("Preferred coaching style"),
+
+  addCoachingTopics: z.array(z.string()).optional().describe("Topics to focus coaching on"),
+
+  addAvoidCoachingTopics: z.array(z.string()).optional().describe("Topics to avoid coaching on"),
 });
 
 type UpdatePreferencesInput = z.infer<typeof UpdatePreferencesInputSchema>;
@@ -95,7 +107,11 @@ Preferences include:
 - setCurrentProjects: Active projects
 - setCurrentGoals: Current objectives
 - preferEmoji: Whether to use emoji
-- maxResponseLength: 'short', 'medium', 'long'`,
+- maxResponseLength: 'short', 'medium', 'long'
+- coachingFrequency: 'always', 'often', 'rare', 'never'
+- coachingStyle: 'direct', 'subtle', 'socratic'
+- addCoachingTopics: Topics to focus coaching on
+- addAvoidCoachingTopics: Topics to avoid coaching on`,
 
   inputSchema: UpdatePreferencesInputSchema,
 
@@ -191,6 +207,27 @@ Preferences include:
     if (input.customPreference) {
       updates.custom = { [input.customPreference.key]: input.customPreference.value };
       updatedFields.push(`custom.${input.customPreference.key}`);
+    }
+
+    // Coaching preferences
+    if (input.coachingFrequency) {
+      updates.coachingFrequency = input.coachingFrequency;
+      updatedFields.push("coachingFrequency");
+    }
+
+    if (input.coachingStyle) {
+      updates.coachingStyle = input.coachingStyle;
+      updatedFields.push("coachingStyle");
+    }
+
+    if (input.addCoachingTopics?.length) {
+      updates.coachingTopics = input.addCoachingTopics;
+      updatedFields.push("coachingTopics");
+    }
+
+    if (input.addAvoidCoachingTopics?.length) {
+      updates.avoidCoachingTopics = input.addAvoidCoachingTopics;
+      updatedFields.push("avoidCoachingTopics");
     }
 
     if (updatedFields.length === 0) {
