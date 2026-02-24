@@ -435,7 +435,7 @@ By opening a pull request you agree to the Contributor License Agreement describ
 
 ## Acknowledgments
 
-Scion is built on the [Mastra](https://mastra.ai/) framework. We are grateful to the Mastra team for creating an excellent foundation for AI agent development.
+Scion was inspired by OpenClaw and is built on the [Mastra](https://mastra.ai/) framework. We are grateful to the Mastra team for creating an excellent foundation for AI agent development.
 
 ## License
 
