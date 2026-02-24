@@ -25,8 +25,6 @@ import {
 } from "./gateway/integration";
 import { getLogCollector } from "./gateway/log-collector";
 import { extractClientIp, GatewaySecurityValidator } from "./gateway/security";
-// Harness for TUI and advanced orchestration
-import { createAgentHarness } from "./harness";
 import { inngest } from "./inngest";
 // Legacy workflow - kept for backwards compatibility during migration
 import { reflectionWorkflow } from "./legacy/reflection-workflow";
@@ -684,3 +682,7 @@ export const mastra = new Mastra({
 
 // Export the skill load result for introspection
 export { skillLoadResult };
+
+// Export harness factory for gateway/TUI integration
+// The gateway should use harness.sendMessage() instead of direct agent calls
+export { createAgentHarness } from "./harness";

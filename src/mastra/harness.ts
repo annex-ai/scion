@@ -8,17 +8,22 @@
  * The Harness provides:
  * - Mode-based model selection
  * - Tool permission management
- * - Event subscription for TUI
- * - Observational Memory configuration
+ * - Event subscription for TUI/Gateway
+ * - Observational Memory with dynamic model resolution
+ *
+ * Pattern follows mastracode: OM models are read from harness state via
+ * requestContext, allowing runtime switching of observer/reflector models.
  */
 
+import type { HarnessRequestContext } from "@mastra/core/harness";
 import { Harness, type ToolCategory } from "@mastra/core/harness";
+import type { RequestContext } from "@mastra/core/request-context";
+import { Memory } from "@mastra/memory";
 import { z } from "zod";
 import { interactiveAgent } from "./agents/interactive";
-import { getSecurityConfig, loadAgentConfig } from "./lib/config";
+import { getMemoryConfig, getSecurityConfig, loadAgentConfig } from "./lib/config";
 import { getProviderApiKeyEnvVar, resolveModel } from "./lib/resolve-model";
-import { sharedMemory } from "./memory";
-import { storage } from "./storage";
+import { storage, vector } from "./storage";
 import { workspace } from "./workspace";
 
 export interface AgentHarnessConfig {
@@ -27,19 +32,124 @@ export interface AgentHarnessConfig {
 
 /**
  * State schema for type-safe runtime state
+ * Includes OM model/threshold fields for dynamic configuration
  */
-const stateSchema = z.object({
+export const stateSchema = z.object({
   currentModelId: z.string().default(""),
   projectPath: z.string().optional(),
   channelType: z.string().optional(),
-  yolo: z.boolean().default(false), // Auto-approve all tools
+  channelId: z.string().optional(),
+  // YOLO mode — auto-approve all tool calls
+  yolo: z.boolean().default(false),
+  // Permission rules — per-category and per-tool approval policies
   permissionRules: z
     .object({
       categories: z.record(z.string(), z.enum(["allow", "ask", "deny"])).default({}),
       tools: z.record(z.string(), z.enum(["allow", "ask", "deny"])).default({}),
     })
     .default({ categories: {}, tools: {} }),
+  // Observational Memory model settings (read by dynamic memory factory)
+  observerModelId: z.string().optional(),
+  reflectorModelId: z.string().optional(),
+  // Observational Memory threshold settings
+  observationThreshold: z.number().optional(),
+  reflectionThreshold: z.number().optional(),
 });
+
+export type HarnessState = z.infer<typeof stateSchema>;
+
+/**
+ * Read harness state from requestContext.
+ * Used by the memory factory and OM model functions.
+ */
+function getHarnessState(requestContext: RequestContext): HarnessState | undefined {
+  return (requestContext.get("harness") as HarnessRequestContext<typeof stateSchema> | undefined)?.getState?.();
+}
+
+/**
+ * Observer model function — reads the current observer model ID from
+ * harness state via requestContext (propagated by OM's agent.generate).
+ */
+function getObserverModel(
+  { requestContext }: { requestContext: RequestContext },
+  defaults: { omModel: string },
+) {
+  const state = getHarnessState(requestContext);
+  return resolveModel(state?.observerModelId ?? defaults.omModel);
+}
+
+/**
+ * Reflector model function — reads the current reflector model ID from
+ * harness state via requestContext (propagated by OM's agent.generate).
+ */
+function getReflectorModel(
+  { requestContext }: { requestContext: RequestContext },
+  defaults: { omModel: string },
+) {
+  const state = getHarnessState(requestContext);
+  return resolveModel(state?.reflectorModelId ?? defaults.omModel);
+}
+
+/**
+ * Create dynamic memory factory that reads OM config from harness state.
+ * This allows runtime switching of OM models and thresholds.
+ */
+function createDynamicMemory(defaults: {
+  omModel: string;
+  obsThreshold: number;
+  refThreshold: number;
+  lastMessages: number;
+  topK: number;
+  messageRange: number;
+  scope: "thread" | "resource";
+}) {
+  let cachedMemory: Memory | null = null;
+  let cachedKey: string | null = null;
+
+  return ({ requestContext }: { requestContext: RequestContext }) => {
+    const state = getHarnessState(requestContext);
+
+    const obsThreshold = state?.observationThreshold ?? defaults.obsThreshold;
+    const refThreshold = state?.reflectionThreshold ?? defaults.refThreshold;
+    const cacheKey = `${obsThreshold}:${refThreshold}`;
+
+    // Return cached memory if thresholds haven't changed
+    if (cachedMemory && cachedKey === cacheKey) {
+      return cachedMemory;
+    }
+
+    cachedMemory = new Memory({
+      storage,
+      vector,
+      options: {
+        lastMessages: defaults.lastMessages,
+        workingMemory: { enabled: false }, // Disabled - replaced by OM
+        semanticRecall: {
+          topK: defaults.topK,
+          messageRange: defaults.messageRange,
+          scope: defaults.scope,
+        },
+        observationalMemory: {
+          enabled: true,
+          scope: defaults.scope,
+          observation: {
+            model: (ctx) => getObserverModel(ctx, defaults),
+            messageTokens: obsThreshold,
+            modelSettings: { maxOutputTokens: 60000 },
+          },
+          reflection: {
+            model: (ctx) => getReflectorModel(ctx, defaults),
+            observationTokens: refThreshold,
+            modelSettings: { maxOutputTokens: 60000 },
+          },
+        },
+      },
+    });
+    cachedKey = cacheKey;
+
+    return cachedMemory;
+  };
+}
 
 /**
  * Tool category resolver for permission system
@@ -60,7 +170,7 @@ function toolCategoryResolver(toolName: string): ToolCategory | null {
     return "execute";
   }
 
-  // Network operations - map to "other" since "network" is not a valid ToolCategory
+  // Network operations
   if (["fetch", "http-request", "web-search", "browse"].includes(toolName)) {
     return "other";
   }
@@ -77,13 +187,28 @@ function toolCategoryResolver(toolName: string): ToolCategory | null {
  */
 export async function createAgentHarness(config?: AgentHarnessConfig) {
   const agentConfig = await loadAgentConfig();
+  const memoryConfig = await getMemoryConfig();
   const securityConfig = await getSecurityConfig();
 
-  // Model configuration
+  // Model configuration from agent.toml
   const defaultModel = agentConfig.models?.default ?? "zai-coding-plan/glm-5";
   const fastModel = agentConfig.models?.fast ?? defaultModel;
-  const omObserverModel = agentConfig.memory?.om_model ?? "google/gemini-2.5-flash";
-  const omReflectorModel = agentConfig.memory?.om_model ?? "google/gemini-2.5-flash";
+
+  // OM configuration from agent.toml [memory] section
+  const omModel = memoryConfig.om_model ?? "google/gemini-2.5-flash";
+  const obsThreshold = memoryConfig.om_observation_threshold ?? 50000;
+  const refThreshold = memoryConfig.om_reflection_threshold ?? 60000;
+
+  // Create dynamic memory factory
+  const dynamicMemory = createDynamicMemory({
+    omModel,
+    obsThreshold,
+    refThreshold,
+    lastMessages: memoryConfig.last_messages,
+    topK: memoryConfig.semantic_recall_top_k,
+    messageRange: memoryConfig.semantic_recall_message_range,
+    scope: memoryConfig.semantic_recall_scope,
+  });
 
   // Modes — same agent, different default models
   const modes = [
@@ -103,28 +228,29 @@ export async function createAgentHarness(config?: AgentHarnessConfig) {
   ];
 
   console.log(`[harness] Creating harness with default model: ${defaultModel}, fast model: ${fastModel}`);
-  console.log(`[harness] OM observer: ${omObserverModel}, reflector: ${omReflectorModel}`);
+  console.log(`[harness] OM model: ${omModel}, obs threshold: ${obsThreshold}, ref threshold: ${refThreshold}`);
 
-  // Instantiate Harness
+  // Instantiate Harness with dynamic memory
+  // Type assertion needed: dynamic memory is supported at runtime but types
+  // in @mastra/core@1.6.0 don't expose DynamicArgument<MastraMemory> yet
   const harness = new Harness({
     id: "multi-channel-agent",
     resourceId: config?.resourceId || securityConfig.resource_id,
     storage,
-    memory: sharedMemory,
+    memory: dynamicMemory as any,
     workspace,
     stateSchema,
     modes,
     resolveModel,
-    omConfig: {
-      defaultObserverModelId: omObserverModel,
-      defaultReflectorModelId: omReflectorModel,
-      defaultObservationThreshold: agentConfig.memory?.om_observation_threshold ?? 50000,
-      defaultReflectionThreshold: agentConfig.memory?.om_reflection_threshold ?? 60000,
-    },
     toolCategoryResolver,
     initialState: {
       currentModelId: defaultModel,
       yolo: false,
+      // OM defaults from agent.toml (can be overridden per-thread via state)
+      observerModelId: omModel,
+      reflectorModelId: omModel,
+      observationThreshold: obsThreshold,
+      reflectionThreshold: refThreshold,
     },
   });
 
