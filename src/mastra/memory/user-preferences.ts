@@ -64,6 +64,12 @@ export const UserPreferencesSchema = z.object({
 
   // Custom key-value preferences
   custom: z.record(z.string(), z.string()).optional().describe("Custom user-defined preferences"),
+
+  // Coaching preferences (for adaptation system)
+  coachingFrequency: z.enum(["always", "often", "rare", "never"]).optional().describe("How often to show coaching suggestions"),
+  coachingStyle: z.enum(["direct", "subtle", "socratic"]).optional().describe("Preferred coaching style"),
+  coachingTopics: z.array(z.string()).optional().describe("Topics to focus coaching on"),
+  avoidCoachingTopics: z.array(z.string()).optional().describe("Topics to avoid coaching on"),
 });
 
 export type UserPreferences = z.infer<typeof UserPreferencesSchema>;
@@ -95,6 +101,9 @@ export function mergePreferences(existing: UserPreferences, updates: Partial<Use
     currentGoals: updates.currentGoals ?? existing.currentGoals,
     // Deep merge custom object
     custom: { ...existing.custom, ...updates.custom },
+    // Coaching preferences
+    coachingTopics: mergeArrays(existing.coachingTopics, updates.coachingTopics),
+    avoidCoachingTopics: mergeArrays(existing.avoidCoachingTopics, updates.avoidCoachingTopics),
   };
 }
 

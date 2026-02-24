@@ -122,13 +122,24 @@ thread_ttl_days = 7
 cleanup_interval_ms = 3600000
 
 [attention_steering]
-enable_reflections = true
+# Legacy reflection system - kept for backwards compatibility
+enable_reflections = false
 cron_schedule = "*/5 * * * *"
 min_batch_size = 10
 max_pending_minutes = 30
 max_messages_per_run = 100
 reflections_md_path = "REFLECTIONS.md"
 reflection_state_path = "reflection-state.json"
+
+[adaptation]
+# Observe → Reflect → Coach adaptation pipeline
+enabled = true
+max_messages_per_run = 100
+max_instruction_patterns = 15
+observer_batch_size = 5
+coaching_enabled = true
+coaching_max_pending = 3
+coaching_dedup_window_days = 7
 
 [compaction]
 enable_compaction = true

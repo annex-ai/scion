@@ -6,10 +6,13 @@ import { SimpleAuth } from "@mastra/core/server";
 import type { Workflow } from "@mastra/core/workflows";
 import { PinoLogger } from "@mastra/loggers";
 import { CloudExporter, DefaultExporter, Observability, SensitiveDataFilter } from "@mastra/observability";
+import { coachAgent } from "./agents/coach";
 import { compactionAgent } from "./agents/compaction";
 import { interactiveAgent } from "./agents/interactive";
-import { reflectorAgent } from "./agents/reflector";
+import { observerAgent } from "./agents/observer";
 import { taskAgent } from "./agents/task";
+// Legacy agent - kept for backwards compatibility during migration
+import { reflectorAgent } from "./legacy/reflector";
 // Import gateway integration
 import {
   getGatewayInstance,
@@ -25,7 +28,12 @@ import { inngest } from "./inngest";
 import { storage } from "./storage";
 import { dynamicFlowRouterWorkflow } from "./workflows/dynamic-flow-router";
 import { nativeFlowExecutionWorkflow } from "./workflows/native-flow-execution-workflow";
-import { reflectionWorkflow } from "./workflows/reflection-workflow";
+import { adaptationMasterWorkflow } from "./workflows/adaptation-master";
+import { coachWorkflow } from "./workflows/coach-workflow";
+import { observeWorkflow } from "./workflows/observe-workflow";
+import { reflectWorkflow } from "./workflows/reflect-workflow";
+// Legacy workflow - kept for backwards compatibility during migration
+import { reflectionWorkflow } from "./legacy/reflection-workflow";
 
 import { handleHeartbeatAlert } from "./gateway/handlers/alert-handler";
 
@@ -101,12 +109,18 @@ export const mastra = new Mastra({
     // Existing workflows
     nativeFlowExecutionWorkflow,
     dynamicFlowRouterWorkflow,
-    reflectionWorkflow,
+    reflectionWorkflow, // Legacy - kept for backwards compatibility
+
+    // Adaptation workflows
+    observeWorkflow,
+    reflectWorkflow,
+    coachWorkflow,
+    adaptationMasterWorkflow,
 
     // Pre-compiled skill workflows (build-time)
     ...skillWorkflowsRecord,
   },
-  agents: { interactiveAgent, taskAgent, reflectorAgent, compactionAgent },
+  agents: { interactiveAgent, taskAgent, reflectorAgent, compactionAgent, observerAgent, coachAgent },
   scorers: {},
   storage,
   logger: new PinoLogger({

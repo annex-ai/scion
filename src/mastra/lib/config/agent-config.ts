@@ -244,6 +244,17 @@ const servicesSchema = z.object({
   reflection: z.boolean(),
 });
 
+// Adaptation System Configuration (Observe → Reflect → Coach)
+const adaptationSchema = z.object({
+  enabled: z.boolean().default(true),
+  max_messages_per_run: z.number().int().min(1).default(100),
+  max_instruction_patterns: z.number().int().min(1).default(15),
+  observer_batch_size: z.number().int().min(1).default(5),
+  coaching_enabled: z.boolean().default(true),
+  coaching_max_pending: z.number().int().min(1).default(3),
+  coaching_dedup_window_days: z.number().int().min(1).default(7),
+});
+
 const agentConfigSchema = z.object({
   identity: identitySchema.optional(),
   archetype: archetypeSchema.optional(),
@@ -254,6 +265,7 @@ const agentConfigSchema = z.object({
   services: servicesSchema,
   heartbeat: heartbeatSchema.optional(),
   attention_steering: attentionSteeringSchema,
+  adaptation: adaptationSchema.optional(),
   security: securitySchema.optional(),
   memory: memorySchema.optional(),
   server: serverSchema.optional(),
@@ -288,6 +300,7 @@ export type ModelsSection = z.infer<typeof modelsSchema>;
 export type FlowsSection = z.infer<typeof flowsSchema>;
 export type GatewaySection = z.infer<typeof gatewaySchema>;
 export type GatewaySecuritySection = z.infer<typeof gatewaySecuritySchema>;
+export type AdaptationSection = z.infer<typeof adaptationSchema>;
 
 // ============================================================================
 // Agent Directory
@@ -592,6 +605,25 @@ export async function getGatewaySecurityConfig(): Promise<GatewaySecuritySection
       blacklist_ips: [],
       trust_proxy: false,
       trusted_proxies: [],
+    }
+  );
+}
+
+/**
+ * Get adaptation configuration from agent config
+ * Returns defaults if [adaptation] section is missing
+ */
+export async function getAdaptationConfig(): Promise<AdaptationSection> {
+  const config = await loadAgentConfig();
+  return (
+    config.adaptation ?? {
+      enabled: true,
+      max_messages_per_run: 100,
+      max_instruction_patterns: 15,
+      observer_batch_size: 5,
+      coaching_enabled: true,
+      coaching_max_pending: 3,
+      coaching_dedup_window_days: 7,
     }
   );
 }

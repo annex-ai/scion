@@ -67,6 +67,9 @@ import { cronManageTool } from "./cron-manage";
 import { delegateToAgentTool } from "./delegate-agent";
 import { handoffToAgentTool } from "./handoff-agent";
 
+// Adaptation system
+import { triggerAdaptationTool } from "./trigger-adaptation";
+
 // Re-export all tools for external use
 export {
   // Core tools
@@ -111,6 +114,8 @@ export {
   // Agent delegation (swarm & team patterns)
   delegateToAgentTool,
   handoffToAgentTool,
+  // Adaptation system
+  triggerAdaptationTool,
 };
 
 /**
@@ -146,4 +151,6 @@ export const tools = [
   // Agent delegation (swarm & team patterns)
   delegateToAgentTool,
   handoffToAgentTool,
+  // Adaptation system
+  triggerAdaptationTool,
 ];

@@ -3,9 +3,9 @@
 
 import { beforeEach, describe, expect, mock, test } from "bun:test";
 import type { MastraDBMessage, MessageList } from "@mastra/core/agent";
-import { reflectorAgent } from "../agents/reflector";
+import { reflectorAgent } from "./reflector";
 import { ReflectorProcessor } from "./reflector-processor";
-import type { ReflectorAnalysis } from "./reflector-processor";
+import type { ReflectorAnalysis } from "../lib/reflection-utils";
 
 // Helper to create mock messages
 function createMessage(
