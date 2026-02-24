@@ -276,8 +276,9 @@ const extractObservationsStep = createStep({
 
         if (output?.observations) {
           for (const obs of output.observations) {
-            // Find the exchange this observation relates to (first in batch as fallback)
-            const exchange = batch[0];
+            // Map exchangeIndex (1-based) to the correct exchange
+            const exchangeIdx = Math.max(0, Math.min((obs.exchangeIndex ?? 1) - 1, batch.length - 1));
+            const exchange = batch[exchangeIdx];
             allObservations.push({
               id: generateId(),
               threadId: exchange.threadId,
@@ -416,7 +417,9 @@ Assistant: "${ex.assistantResponse}"`;
 
 ${sections.join("\n\n")}
 
-Extract observations about user frustrations, corrections, preferences, workflow issues, or coaching opportunities. Return an empty array if there are no notable signals.`;
+Extract observations about user frustrations, corrections, preferences, workflow issues, or coaching opportunities.
+For each observation, specify the exchangeIndex (1-based) indicating which exchange it came from.
+Return an empty array if there are no notable signals.`;
 }
 
 // ============================================================================

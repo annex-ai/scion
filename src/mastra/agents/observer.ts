@@ -24,6 +24,7 @@ const observerModel =
 export const observationOutputSchema = z.object({
   observations: z.array(
     z.object({
+      exchangeIndex: z.number().describe("1-based index of the exchange this observation came from"),
       type: z.enum([
         "user_frustration",
         "user_correction",

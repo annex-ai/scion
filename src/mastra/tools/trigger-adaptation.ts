@@ -10,6 +10,7 @@
 
 import { createTool } from "@mastra/core/tools";
 import { z } from "zod";
+import { releaseLock } from "../lib/adaptation-lock";
 
 export const triggerAdaptationTool = createTool({
   id: "trigger-adaptation",
@@ -85,6 +86,23 @@ export const triggerAdaptationTool = createTool({
       };
     } catch (error) {
       console.error("[trigger-adaptation] Error:", error);
+
+      // Clean up any locks that might be held due to workflow failure
+      // This prevents lock staleness from blocking future runs
+      try {
+        if (stage === "all" || stage === "observe") {
+          await releaseLock("observe");
+        }
+        if (stage === "all" || stage === "reflect") {
+          await releaseLock("reflect");
+        }
+        if (stage === "all" || stage === "coach") {
+          await releaseLock("coach");
+        }
+      } catch (lockError) {
+        console.warn("[trigger-adaptation] Failed to clean up locks:", lockError);
+      }
+
       return {
         success: false,
         stage,
