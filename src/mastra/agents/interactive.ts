@@ -11,33 +11,24 @@ import { createAnswerRelevancyScorer, createToxicityScorer } from "@mastra/evals
 import { fastembed } from "@mastra/fastembed";
 import { Memory } from "@mastra/memory";
 import { loadFlows, toWorkflowsRecord } from "../flows";
-import {
-  AGENT_DIR,
-  getAttentionSteeringConfig,
-  getFlowsConfig,
-  getLoopConfig,
-  getMemoryConfig,
-  loadAgentConfig,
-} from "../lib/config";
+import { AGENT_DIR, getFlowsConfig, getLoopConfig, getMemoryConfig, loadAgentConfig } from "../lib/config";
 import { getCompactionInstructions } from "../lib/instructions/compaction";
 import { getHeartbeatInstructions } from "../lib/instructions/heartbeat";
 import { getPatternInstructions } from "../lib/loop-patterns";
-// TODO: Re-enable after parser validation
-// import { SoulLoaderProcessor } from '../processors/soul-loader';
-// import { getUserPreferencesProcessor } from '../processors/user-preferences';
 import { loadSoulFiles } from "../lib/parsers";
 import { mcpClient } from "../mcp_client";
 import { sharedMemory } from "../memory";
+import { getAdaptationProcessor } from "../processors/adaptation-processor";
 import { AdversarialPatternDetector } from "../processors/adversarial-detector";
 import { SecretMaskProcessor } from "../processors/secret-mask-processor";
 import { SecretSanitizerProcessor } from "../processors/secret-sanitizer-processor";
 import { TimeCompactionProcessor } from "../processors/time-compaction-processor";
 import { TokenCompactionProcessor } from "../processors/token-compaction-processor";
+import { getUserPreferencesProcessor } from "../processors/user-preferences";
 import { storage, vector } from "../storage";
 import { tools } from "../tools";
 import { dynamicFlowRouterWorkflow } from "../workflows/dynamic-flow-router";
 import { nativeFlowExecutionWorkflow } from "../workflows/native-flow-execution-workflow";
-import { reflectionWorkflow } from "../workflows/reflection-workflow";
 import { workspace } from "../workspace";
 
 /**
@@ -162,10 +153,6 @@ console.log(
   `[interactive-agent] Memory config from agent.toml: lastMessages=${memoryConfig.last_messages}, topK=${memoryConfig.semantic_recall_top_k}, messageRange=${memoryConfig.semantic_recall_message_range}`,
 );
 
-// Load attention steering config
-const attentionConfig = await getAttentionSteeringConfig();
-console.log(`[interactive-agent] Attention steering: reflections=${attentionConfig.enable_reflections}`);
-
 // Load compaction config
 console.log(
   `[interactive-agent] Compaction: mode=${compactionConfig?.mode}, threshold=${compactionConfig?.trigger_threshold}, max=${compactionConfig?.max_context_tokens}`,
@@ -227,25 +214,6 @@ function buildContextProcessors(compactionConfig: any) {
 }
 
 const contextProcessors = buildContextProcessors(compactionConfig);
-
-// TODO: Re-enable after parser validation
-// /**
-//  * Soul Loader processor for injecting personality and user context.
-//  * Loads SOUL.md, IDENTITY.md, USER.md from config/ directory.
-//  * Supports hot-reload when files change.
-//  */
-// const soulLoaderProcessor = new SoulLoaderProcessor({
-//   configPath: process.env.SOUL_CONFIG_PATH || AGENT_DIR,
-//   verbose: true,
-// });
-//
-// /**
-//  * User Preferences processor for resource-scoped preferences.
-//  * Loads learned preferences that persist across all conversations.
-//  */
-// const userPreferencesProcessor = getUserPreferencesProcessor({
-//   verbose: false,
-// });
 
 export const interactiveAgent = new Agent({
   id: "interactive-agent",
@@ -310,7 +278,6 @@ export const interactiveAgent = new Agent({
   workflows: {
     nativeFlowExecutionWorkflow,
     dynamicFlowRouterWorkflow,
-    reflectionWorkflow,
     ...flowWorkflows, // Spread loaded flow workflows
   },
   tools: await getMergedTools(),
@@ -328,6 +295,10 @@ export const interactiveAgent = new Agent({
     ...contextProcessors,
     // 5. Skills loading
     new SkillsProcessor({ workspace }),
+    // 6. User preferences
+    getUserPreferencesProcessor(),
+    // 7. Adaptation (learned patterns + coaching)
+    getAdaptationProcessor(),
     // Log skills info
     {
       id: "skills-logger",

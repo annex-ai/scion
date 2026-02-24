@@ -14,17 +14,9 @@
 import { existsSync } from "node:fs";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
-import type { ProcessInputArgs, Processor } from "@mastra/core/processors";
+import type { MastraDBMessage } from "@mastra/core/agent";
+import type { ProcessInputArgs, ProcessInputResult, Processor } from "@mastra/core/processors";
 import { AGENT_DIR } from "../lib/config";
-
-// Message type for processor
-interface Message {
-  id: string;
-  role: string;
-  content: string;
-  createdAt: Date;
-  source?: string;
-}
 
 import {
   DEFAULT_PREFERENCES,
@@ -170,8 +162,7 @@ export class UserPreferencesProcessor implements Processor<"user-preferences"> {
   /**
    * Process input messages, injecting preferences context
    */
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  async processInput(args: ProcessInputArgs): Promise<any[]> {
+  async processInput(args: ProcessInputArgs): Promise<ProcessInputResult> {
     const { messages, requestContext } = args;
 
     // Get resource ID from context
@@ -206,13 +197,15 @@ export class UserPreferencesProcessor implements Processor<"user-preferences"> {
     // Build preferences context
     const prefsContext = formatPreferencesContext(preferences);
 
-    // Create preferences message
-    const prefsMessage: Message = {
+    // Create preferences message using proper MastraDBMessage format
+    const prefsMessage: MastraDBMessage = {
       id: `user-preferences-${Date.now()}`,
       role: "system",
-      content: prefsContext,
+      content: {
+        format: 2,
+        parts: [{ type: "text", text: prefsContext }],
+      },
       createdAt: new Date(),
-      source: "user-preferences",
     };
 
     // Inject after soul config but before user messages

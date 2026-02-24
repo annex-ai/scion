@@ -3,8 +3,8 @@
 
 import type { MastraDBMessage } from "@mastra/core/agent";
 import type { ProcessOutputResultArgs, Processor } from "@mastra/core/processors";
-import { reflectorAgent } from "../agents/reflector";
 import { type ReflectorAnalysis, reflectorAnalysisSchema } from "../lib/reflection-utils";
+import { reflectorAgent } from "./reflector";
 
 // Re-export schema and type for backward compatibility
 export { reflectorAnalysisSchema } from "../lib/reflection-utils";

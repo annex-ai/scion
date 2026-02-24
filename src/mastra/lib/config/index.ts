@@ -8,6 +8,7 @@
 export {
   AGENT_DIR,
   loadAgentConfig,
+  getAdaptationConfig,
   getAttentionSteeringConfig,
   getCompactionConfig,
   getServicesConfig,
@@ -25,6 +26,7 @@ export {
   getConfigPath,
   clearConfigCache,
   resolveConfigPath,
+  type AdaptationSection,
   type AgentConfig,
   type AttentionSteeringSection,
   type CompactionSection,

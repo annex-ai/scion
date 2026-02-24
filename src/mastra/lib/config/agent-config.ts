@@ -244,6 +244,17 @@ const servicesSchema = z.object({
   reflection: z.boolean(),
 });
 
+// Adaptation System Configuration (Observe → Reflect → Coach)
+const adaptationSchema = z.object({
+  enabled: z.boolean(),
+  max_messages_per_run: z.number().int().min(1),
+  max_instruction_patterns: z.number().int().min(1),
+  observer_batch_size: z.number().int().min(1),
+  coaching_enabled: z.boolean(),
+  coaching_max_pending: z.number().int().min(1),
+  coaching_dedup_window_days: z.number().int().min(1),
+});
+
 const agentConfigSchema = z.object({
   identity: identitySchema.optional(),
   archetype: archetypeSchema.optional(),
@@ -254,6 +265,7 @@ const agentConfigSchema = z.object({
   services: servicesSchema,
   heartbeat: heartbeatSchema.optional(),
   attention_steering: attentionSteeringSchema,
+  adaptation: adaptationSchema,
   security: securitySchema.optional(),
   memory: memorySchema.optional(),
   server: serverSchema.optional(),
@@ -288,6 +300,7 @@ export type ModelsSection = z.infer<typeof modelsSchema>;
 export type FlowsSection = z.infer<typeof flowsSchema>;
 export type GatewaySection = z.infer<typeof gatewaySchema>;
 export type GatewaySecuritySection = z.infer<typeof gatewaySecuritySchema>;
+export type AdaptationSection = z.infer<typeof adaptationSchema>;
 
 // ============================================================================
 // Agent Directory
@@ -594,4 +607,13 @@ export async function getGatewaySecurityConfig(): Promise<GatewaySecuritySection
       trusted_proxies: [],
     }
   );
+}
+
+/**
+ * Get adaptation configuration from agent config
+ * Throws if [adaptation] section is missing
+ */
+export async function getAdaptationConfig(): Promise<AdaptationSection> {
+  const config = await loadAgentConfig();
+  return config.adaptation;
 }

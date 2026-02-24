@@ -53,6 +53,8 @@ src/mastra/public/mcp.json
 
 # Agent runtime state (user-specific, not tracked)
 .agent/data/
+.agent/adaptation/
+.agent/preferences/
 .agent/CRON.md
 .agent/REFLECTIONS.md
 .agent/HEARTBEAT.md
@@ -64,6 +66,7 @@ src/mastra/public/mcp.json
 
 # Internal planning docs
 opensource_roadmap.md
+PLAN_HARNESS_TUI_OM.md
 
 # Claude Code
 .claude/
