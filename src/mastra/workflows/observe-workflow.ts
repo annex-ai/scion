@@ -13,23 +13,19 @@
 
 import { createStep, createWorkflow } from "@mastra/core/workflows";
 import { z } from "zod";
-import { getAdaptationConfig } from "../lib/config";
+import { type ObservationOutput, observationOutputSchema } from "../agents/observer";
 import { acquireLock, releaseLock } from "../lib/adaptation-lock";
 import {
-  loadState,
-  updateState,
-  saveObservations,
-  generateId,
-  updateMetrics,
   ensureAdaptationDirs,
+  generateId,
+  loadState,
+  saveObservations,
+  updateMetrics,
+  updateState,
 } from "../lib/adaptation-storage";
 import type { Observation, ObservationType } from "../lib/adaptation-types";
-import {
-  extractTextContent,
-  isToolCallOnly,
-  chunkArray,
-} from "../lib/reflection-utils";
-import { type ObservationOutput, observationOutputSchema } from "../agents/observer";
+import { getAdaptationConfig } from "../lib/config";
+import { chunkArray, extractTextContent, isToolCallOnly } from "../lib/reflection-utils";
 
 // ============================================================================
 // Schemas
@@ -209,9 +205,7 @@ const collectThreadsStep = createStep({
       if (exchanges.length >= config.max_messages_per_run) break;
     }
 
-    console.log(
-      `[Observe Workflow] Collected ${exchanges.length} exchanges from ${threadsScanned} threads`,
-    );
+    console.log(`[Observe Workflow] Collected ${exchanges.length} exchanges from ${threadsScanned} threads`);
 
     return {
       resourceId: inputData.resourceId,
@@ -260,9 +254,7 @@ const extractObservationsStep = createStep({
     const batches = chunkArray(exchanges, config.observer_batch_size);
     const allObservations: Observation[] = [];
 
-    console.log(
-      `[Observe Workflow] Analyzing ${exchanges.length} exchanges in ${batches.length} batches`,
-    );
+    console.log(`[Observe Workflow] Analyzing ${exchanges.length} exchanges in ${batches.length} batches`);
 
     for (const batch of batches) {
       try {
@@ -341,10 +333,9 @@ const storeObservationsStep = createStep({
 
     // Update processed message IDs
     const state = await loadState();
-    const newProcessedIds = [...new Set([
-      ...state.processedMessageIds,
-      ...observations.map((o) => o.messageId),
-    ])].slice(-1000); // Keep last 1000 IDs
+    const newProcessedIds = [...new Set([...state.processedMessageIds, ...observations.map((o) => o.messageId)])].slice(
+      -1000,
+    ); // Keep last 1000 IDs
 
     await updateState({
       lastObserveRun: new Date().toISOString(),

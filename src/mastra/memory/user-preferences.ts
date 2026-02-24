@@ -66,7 +66,10 @@ export const UserPreferencesSchema = z.object({
   custom: z.record(z.string(), z.string()).optional().describe("Custom user-defined preferences"),
 
   // Coaching preferences (for adaptation system)
-  coachingFrequency: z.enum(["always", "often", "rare", "never"]).optional().describe("How often to show coaching suggestions"),
+  coachingFrequency: z
+    .enum(["always", "often", "rare", "never"])
+    .optional()
+    .describe("How often to show coaching suggestions"),
   coachingStyle: z.enum(["direct", "subtle", "socratic"]).optional().describe("Preferred coaching style"),
   coachingTopics: z.array(z.string()).optional().describe("Topics to focus coaching on"),
   avoidCoachingTopics: z.array(z.string()).optional().describe("Topics to avoid coaching on"),

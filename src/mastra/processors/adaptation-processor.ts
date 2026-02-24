@@ -12,10 +12,10 @@
 
 import type { MastraDBMessage } from "@mastra/core/agent";
 import type { ProcessInputArgs, ProcessInputResult, Processor } from "@mastra/core/processors";
-import { getAdaptationConfig } from "../lib/config";
-import { loadActivePatterns, ensureAdaptationDirs } from "../lib/adaptation-storage";
 import { claimMatchingSuggestion } from "../lib/adaptation-claim";
+import { ensureAdaptationDirs, loadActivePatterns } from "../lib/adaptation-storage";
 import type { AdaptationPattern, CoachingSuggestion } from "../lib/adaptation-types";
+import { getAdaptationConfig } from "../lib/config";
 
 /**
  * Configuration options for AdaptationProcessor
@@ -115,8 +115,7 @@ export class AdaptationProcessor implements Processor<"adaptation"> {
 
       if (this.verbose) {
         console.log(
-          `[AdaptationProcessor] Injecting ${topPatterns.length} patterns` +
-            (coaching ? `, coaching: ${coaching.type}` : ""),
+          `[AdaptationProcessor] Injecting ${topPatterns.length} patterns${coaching ? `, coaching: ${coaching.type}` : ""}`,
         );
       }
 
@@ -135,11 +134,7 @@ export class AdaptationProcessor implements Processor<"adaptation"> {
       const lastSystemIndex = this.findLastSystemMessageIndex(messages);
 
       if (lastSystemIndex >= 0) {
-        return [
-          ...messages.slice(0, lastSystemIndex + 1),
-          adaptationMessage,
-          ...messages.slice(lastSystemIndex + 1),
-        ];
+        return [...messages.slice(0, lastSystemIndex + 1), adaptationMessage, ...messages.slice(lastSystemIndex + 1)];
       }
 
       // No system messages, prepend
@@ -156,10 +151,7 @@ export class AdaptationProcessor implements Processor<"adaptation"> {
   /**
    * Build the context message from patterns and coaching
    */
-  private buildContextMessage(
-    patterns: AdaptationPattern[],
-    coaching: CoachingSuggestion | null,
-  ): string {
+  private buildContextMessage(patterns: AdaptationPattern[], coaching: CoachingSuggestion | null): string {
     const sections: string[] = [];
 
     if (patterns.length > 0) {
@@ -208,9 +200,7 @@ export class AdaptationProcessor implements Processor<"adaptation"> {
           return msg.content.content;
         }
         if (Array.isArray(msg.content?.parts)) {
-          const textParts = msg.content.parts
-            .filter((p: any) => p.type === "text")
-            .map((p: any) => p.text);
+          const textParts = msg.content.parts.filter((p: any) => p.type === "text").map((p: any) => p.text);
           return textParts.join(" ");
         }
       }
@@ -240,9 +230,7 @@ let processorInstance: AdaptationProcessor | null = null;
 /**
  * Get or create the singleton processor instance
  */
-export function getAdaptationProcessor(
-  options?: AdaptationProcessorOptions,
-): AdaptationProcessor {
+export function getAdaptationProcessor(options?: AdaptationProcessorOptions): AdaptationProcessor {
   if (!processorInstance) {
     processorInstance = new AdaptationProcessor(options);
   }

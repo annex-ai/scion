@@ -35,12 +35,7 @@ export interface Observation {
 
 // --- Patterns (from Reflect workflow) ---
 
-export type PatternType =
-  | "attention_signal"
-  | "decision_marker"
-  | "noise_pattern"
-  | "heuristic"
-  | "preference";
+export type PatternType = "attention_signal" | "decision_marker" | "noise_pattern" | "heuristic" | "preference";
 
 export type PatternState = "active" | "validated" | "stale";
 
@@ -68,20 +63,11 @@ export interface AdaptationPattern {
 
 // --- Coaching (from Coach workflow) ---
 
-export type CoachingType =
-  | "proactive_insight"
-  | "skill_building"
-  | "process_optimization"
-  | "reflection_prompt";
+export type CoachingType = "proactive_insight" | "skill_building" | "process_optimization" | "reflection_prompt";
 
 export type CoachingPriority = "high" | "medium" | "low";
 
-export type CoachingSuggestionState =
-  | "pending"
-  | "delivered"
-  | "accepted"
-  | "dismissed"
-  | "expired";
+export type CoachingSuggestionState = "pending" | "delivered" | "accepted" | "dismissed" | "expired";
 
 export interface CoachingTrigger {
   keywords: string[];

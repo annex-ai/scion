@@ -10,11 +10,7 @@
  */
 
 import { acquireLock, releaseLock } from "./adaptation-lock";
-import {
-  loadPendingSuggestions,
-  savePendingSuggestions,
-  moveToDelivered,
-} from "./adaptation-storage";
+import { loadPendingSuggestions, moveToDelivered, savePendingSuggestions } from "./adaptation-storage";
 import type { CoachingSuggestion, CoachingTrigger } from "./adaptation-types";
 
 /**
@@ -57,9 +53,7 @@ function scoreTriggerMatch(trigger: CoachingTrigger, message: string): number {
  * @param userMessage - The user's message to match against triggers
  * @returns The claimed suggestion, or null if no match found
  */
-export async function claimMatchingSuggestion(
-  userMessage: string,
-): Promise<CoachingSuggestion | null> {
+export async function claimMatchingSuggestion(userMessage: string): Promise<CoachingSuggestion | null> {
   // Skip if message is too short to be meaningful
   if (!userMessage || userMessage.trim().length < 5) {
     return null;
@@ -103,9 +97,7 @@ export async function claimMatchingSuggestion(
     await savePendingSuggestions(pending);
     await moveToDelivered(best);
 
-    console.log(
-      `[adaptation-claim] Claimed suggestion ${best.id} (score: ${scored[0].score}, type: ${best.type})`,
-    );
+    console.log(`[adaptation-claim] Claimed suggestion ${best.id} (score: ${scored[0].score}, type: ${best.type})`);
 
     return best;
   } catch (error) {
@@ -128,9 +120,7 @@ export async function hasMatchingSuggestion(userMessage: string): Promise<boolea
   try {
     const pending = await loadPendingSuggestions();
 
-    return pending
-      .filter((s) => s.state === "pending")
-      .some((s) => scoreTriggerMatch(s.trigger, userMessage) > 0);
+    return pending.filter((s) => s.state === "pending").some((s) => scoreTriggerMatch(s.trigger, userMessage) > 0);
   } catch {
     return false;
   }

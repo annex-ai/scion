@@ -15,8 +15,8 @@
 
 import { createStep, createWorkflow } from "@mastra/core/workflows";
 import { z } from "zod";
-import { getAdaptationConfig } from "../lib/config";
 import { ensureAdaptationDirs, updateMetrics } from "../lib/adaptation-storage";
+import { getAdaptationConfig } from "../lib/config";
 
 // ============================================================================
 // Schemas
@@ -30,27 +30,31 @@ const workflowInputSchema = z.object({
 const observeResultSchema = z.object({
   resourceId: z.string(),
   stage: z.string(),
-  observeResult: z.object({
-    observationsCreated: z.number(),
-    threadsScanned: z.number(),
-    messagesScanned: z.number(),
-    summary: z.string(),
-  }).nullable(),
+  observeResult: z
+    .object({
+      observationsCreated: z.number(),
+      threadsScanned: z.number(),
+      messagesScanned: z.number(),
+      summary: z.string(),
+    })
+    .nullable(),
 });
 
 const reflectResultSchema = z.object({
   resourceId: z.string(),
   stage: z.string(),
   observeResult: z.any().nullable(),
-  reflectResult: z.object({
-    patternsCreated: z.number(),
-    patternsReinforced: z.number(),
-    patternsStaled: z.number(),
-    patternsArchived: z.number(),
-    patternsActive: z.number(),
-    observationsProcessed: z.number(),
-    summary: z.string(),
-  }).nullable(),
+  reflectResult: z
+    .object({
+      patternsCreated: z.number(),
+      patternsReinforced: z.number(),
+      patternsStaled: z.number(),
+      patternsArchived: z.number(),
+      patternsActive: z.number(),
+      observationsProcessed: z.number(),
+      summary: z.string(),
+    })
+    .nullable(),
 });
 
 const workflowOutputSchema = z.object({
@@ -112,9 +116,7 @@ const runObserveStep = createStep({
 
       const observeResult = (result.steps?.["release-lock"] as any)?.output ?? null;
 
-      console.log(
-        `[Adaptation Master] Observe complete: ${observeResult?.summary ?? "no result"}`,
-      );
+      console.log(`[Adaptation Master] Observe complete: ${observeResult?.summary ?? "no result"}`);
 
       return {
         resourceId,
@@ -174,9 +176,7 @@ const runReflectStep = createStep({
 
       const reflectResult = (result.steps?.["release-lock"] as any)?.output ?? null;
 
-      console.log(
-        `[Adaptation Master] Reflect complete: ${reflectResult?.summary ?? "no result"}`,
-      );
+      console.log(`[Adaptation Master] Reflect complete: ${reflectResult?.summary ?? "no result"}`);
 
       return {
         resourceId,
@@ -249,9 +249,7 @@ const runCoachStep = createStep({
 
       const coachResult = (result.steps?.["release-lock"] as any)?.output ?? null;
 
-      console.log(
-        `[Adaptation Master] Coach complete: ${coachResult?.summary ?? "no result"}`,
-      );
+      console.log(`[Adaptation Master] Coach complete: ${coachResult?.summary ?? "no result"}`);
 
       return {
         observeResult,
@@ -275,11 +273,7 @@ const runCoachStep = createStep({
 // Helper Functions
 // ============================================================================
 
-function buildSummary(
-  observeResult: any,
-  reflectResult: any,
-  coachResult: any,
-): string {
+function buildSummary(observeResult: any, reflectResult: any, coachResult: any): string {
   const parts: string[] = [];
 
   if (observeResult) {
@@ -287,9 +281,7 @@ function buildSummary(
   }
 
   if (reflectResult) {
-    parts.push(
-      `Reflect: ${reflectResult.patternsCreated} created, ${reflectResult.patternsReinforced} reinforced`,
-    );
+    parts.push(`Reflect: ${reflectResult.patternsCreated} created, ${reflectResult.patternsReinforced} reinforced`);
   }
 
   if (coachResult) {

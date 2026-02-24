@@ -9,17 +9,10 @@
 
 import { existsSync, renameSync } from "node:fs";
 import { resolve } from "node:path";
-import { AGENT_DIR } from "./config";
+import { ensureAdaptationDirs, generateId, saveActivePatterns } from "./adaptation-storage";
 import type { AdaptationPattern, PatternType } from "./adaptation-types";
-import {
-  ensureAdaptationDirs,
-  saveActivePatterns,
-  generateId,
-} from "./adaptation-storage";
-import {
-  parseReflectionsMd,
-  type AggregatedPattern,
-} from "./reflection-utils";
+import { AGENT_DIR } from "./config";
+import { type AggregatedPattern, parseReflectionsMd } from "./reflection-utils";
 
 const LEGACY_REFLECTIONS_PATH = resolve(AGENT_DIR, "REFLECTIONS.md");
 

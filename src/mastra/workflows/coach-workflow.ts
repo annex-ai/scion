@@ -14,31 +14,23 @@
 
 import { createStep, createWorkflow } from "@mastra/core/workflows";
 import { z } from "zod";
-import { getAdaptationConfig } from "../lib/config";
+import { type CoachingOutput, coachingOutputSchema } from "../agents/coach";
 import { acquireLock, releaseLock } from "../lib/adaptation-lock";
 import {
-  loadState,
-  updateState,
+  ensureAdaptationDirs,
+  generateId,
   loadActivePatterns,
   loadPendingSuggestions,
-  savePendingSuggestions,
   loadRecentlyDelivered,
+  loadState,
   moveToExpired,
+  savePendingSuggestions,
   updateMetrics,
-  generateId,
-  ensureAdaptationDirs,
+  updateState,
 } from "../lib/adaptation-storage";
-import type {
-  AdaptationPattern,
-  CoachingSuggestion,
-  CoachingType,
-  CoachingPriority,
-} from "../lib/adaptation-types";
-import {
-  COACHING_EXPIRATION_DAYS,
-  COACHING_DEDUP_WINDOW_DAYS,
-} from "../lib/adaptation-types";
-import { type CoachingOutput, coachingOutputSchema } from "../agents/coach";
+import type { AdaptationPattern, CoachingPriority, CoachingSuggestion, CoachingType } from "../lib/adaptation-types";
+import { COACHING_DEDUP_WINDOW_DAYS, COACHING_EXPIRATION_DAYS } from "../lib/adaptation-types";
+import { getAdaptationConfig } from "../lib/config";
 
 // ============================================================================
 // Schemas
@@ -138,14 +130,10 @@ const loadPatternsStep = createStep({
     // and have coaching potential
     const candidates = patterns.filter(
       (p) =>
-        p.confidence >= 0.7 &&
-        (p.state === "validated" || p.state === "active") &&
-        p.coachingPriority !== undefined,
+        p.confidence >= 0.7 && (p.state === "validated" || p.state === "active") && p.coachingPriority !== undefined,
     );
 
-    console.log(
-      `[Coach Workflow] Found ${candidates.length} coaching candidates from ${patterns.length} patterns`,
-    );
+    console.log(`[Coach Workflow] Found ${candidates.length} coaching candidates from ${patterns.length} patterns`);
 
     return {
       resourceId: inputData.resourceId,
@@ -186,19 +174,13 @@ const checkExistingStep = createStep({
     }
 
     // Filter out patterns that already have suggestions
-    const filtered = (candidates as AdaptationPattern[]).filter(
-      (p) => !existingPatternIds.has(p.id),
-    );
+    const filtered = (candidates as AdaptationPattern[]).filter((p) => !existingPatternIds.has(p.id));
 
     // Calculate available slots
-    const pendingCount = (pendingSuggestions as CoachingSuggestion[]).filter(
-      (s) => s.state === "pending",
-    ).length;
+    const pendingCount = (pendingSuggestions as CoachingSuggestion[]).filter((s) => s.state === "pending").length;
     const slotsAvailable = Math.max(0, config.coaching_max_pending - pendingCount);
 
-    console.log(
-      `[Coach Workflow] ${filtered.length} patterns eligible, ${slotsAvailable} slots available`,
-    );
+    console.log(`[Coach Workflow] ${filtered.length} patterns eligible, ${slotsAvailable} slots available`);
 
     return {
       resourceId: inputData.resourceId,
@@ -289,10 +271,7 @@ const writeSuggestionsStep = createStep({
     const { newSuggestions, pendingSuggestions, suggestionsGenerated } = inputData;
 
     // Combine existing and new suggestions
-    const allPending = [
-      ...(pendingSuggestions as CoachingSuggestion[]),
-      ...(newSuggestions as CoachingSuggestion[]),
-    ];
+    const allPending = [...(pendingSuggestions as CoachingSuggestion[]), ...(newSuggestions as CoachingSuggestion[])];
 
     await savePendingSuggestions(allPending);
 
@@ -421,10 +400,7 @@ ${pattern.coachingApproach ? `Approach hint: ${pattern.coachingApproach}` : ""}
 Create a non-intrusive, actionable coaching suggestion that can be naturally incorporated into conversation when the right context arises.`;
 }
 
-function createSuggestionFromOutput(
-  output: CoachingOutput,
-  pattern: AdaptationPattern,
-): CoachingSuggestion {
+function createSuggestionFromOutput(output: CoachingOutput, pattern: AdaptationPattern): CoachingSuggestion {
   const now = new Date();
   const priority = output.suggestion.priority as CoachingPriority;
   const expirationDays = COACHING_EXPIRATION_DAYS[priority];

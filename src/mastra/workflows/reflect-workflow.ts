@@ -28,28 +28,24 @@ import { createStep, createWorkflow } from "@mastra/core/workflows";
 import { z } from "zod";
 import { acquireLock, releaseLock } from "../lib/adaptation-lock";
 import {
-  loadState,
-  updateState,
-  loadActivePatterns,
-  saveActivePatterns,
-  loadPendingObservations,
-  archiveProcessedObservations,
   archivePatterns,
-  updateMetrics,
-  generateId,
+  archiveProcessedObservations,
   daysSince,
   ensureAdaptationDirs,
+  generateId,
+  loadActivePatterns,
+  loadPendingObservations,
+  loadState,
+  saveActivePatterns,
+  updateMetrics,
+  updateState,
 } from "../lib/adaptation-storage";
-import type {
-  AdaptationPattern,
-  Observation,
-  PatternType,
-} from "../lib/adaptation-types";
+import type { AdaptationPattern, Observation, PatternType } from "../lib/adaptation-types";
 import {
+  JACCARD_SIMILARITY_THRESHOLD,
+  PATTERN_ARCHIVE_THRESHOLD_DAYS,
   PATTERN_STALE_THRESHOLD_RUNS,
   PATTERN_VALIDATE_THRESHOLD_OCCURRENCES,
-  PATTERN_ARCHIVE_THRESHOLD_DAYS,
-  JACCARD_SIMILARITY_THRESHOLD,
 } from "../lib/adaptation-types";
 import { tokenize } from "../lib/reflection-utils";
 
@@ -140,14 +136,9 @@ const loadDataStep = createStep({
       };
     }
 
-    const [observations, patterns] = await Promise.all([
-      loadPendingObservations(),
-      loadActivePatterns(),
-    ]);
+    const [observations, patterns] = await Promise.all([loadPendingObservations(), loadActivePatterns()]);
 
-    console.log(
-      `[Reflect Workflow] Loaded ${observations.length} observations and ${patterns.length} patterns`,
-    );
+    console.log(`[Reflect Workflow] Loaded ${observations.length} observations and ${patterns.length} patterns`);
 
     return {
       resourceId: inputData.resourceId,
@@ -217,14 +208,9 @@ const synthesizeStep = createStep({
     const allPatterns = [...patterns, ...mergedNewPatterns];
 
     // Apply state transitions
-    const { staled, updated } = applyStaleTransitions(
-      allPatterns,
-      reinforcedPatternIds,
-    );
+    const { staled, updated } = applyStaleTransitions(allPatterns, reinforcedPatternIds);
 
-    console.log(
-      `[Reflect Workflow] Created ${patternsCreated}, reinforced ${patternsReinforced}, staled ${staled}`,
-    );
+    console.log(`[Reflect Workflow] Created ${patternsCreated}, reinforced ${patternsReinforced}, staled ${staled}`);
 
     return {
       resourceId: inputData.resourceId,
@@ -316,9 +302,7 @@ const archiveObservationsStep = createStep({
   execute: async ({ inputData }) => {
     if (inputData.observationsProcessed > 0) {
       await archiveProcessedObservations();
-      console.log(
-        `[Reflect Workflow] Archived ${inputData.observationsProcessed} processed observations`,
-      );
+      console.log(`[Reflect Workflow] Archived ${inputData.observationsProcessed} processed observations`);
     }
     return inputData;
   },
@@ -416,10 +400,7 @@ function jaccardSimilarity(a: string, b: string): number {
  * Returns the pattern with highest Jaccard similarity above threshold,
  * or null if no match found.
  */
-function findBestMatchingPattern(
-  obs: Observation,
-  patterns: AdaptationPattern[],
-): AdaptationPattern | null {
+function findBestMatchingPattern(obs: Observation, patterns: AdaptationPattern[]): AdaptationPattern | null {
   let bestMatch: AdaptationPattern | null = null;
   let bestScore = 0;
 
@@ -447,10 +428,7 @@ function reinforcePattern(pattern: AdaptationPattern, obs: Observation): void {
   pattern.confidence = calculateConfidence(pattern);
 
   // Auto-validate if threshold reached
-  if (
-    pattern.state === "active" &&
-    pattern.occurrences >= PATTERN_VALIDATE_THRESHOLD_OCCURRENCES
-  ) {
+  if (pattern.state === "active" && pattern.occurrences >= PATTERN_VALIDATE_THRESHOLD_OCCURRENCES) {
     pattern.state = "validated";
   }
 
@@ -486,9 +464,7 @@ function createPatternFromObservation(obs: Observation): AdaptationPattern {
  * Determine coaching priority based on observation type.
  * Higher priority for explicit signals, lower for inferred.
  */
-function determineCoachingPriority(
-  obs: Observation,
-): "high" | "medium" | "low" | undefined {
+function determineCoachingPriority(obs: Observation): "high" | "medium" | "low" | undefined {
   // Explicit frustration or correction = high priority
   if (obs.type === "user_frustration" || obs.type === "user_correction") {
     return obs.confidence >= 0.8 ? "high" : "medium";

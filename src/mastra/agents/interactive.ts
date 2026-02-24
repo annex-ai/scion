@@ -11,13 +11,7 @@ import { createAnswerRelevancyScorer, createToxicityScorer } from "@mastra/evals
 import { fastembed } from "@mastra/fastembed";
 import { Memory } from "@mastra/memory";
 import { loadFlows, toWorkflowsRecord } from "../flows";
-import {
-  AGENT_DIR,
-  getFlowsConfig,
-  getLoopConfig,
-  getMemoryConfig,
-  loadAgentConfig,
-} from "../lib/config";
+import { AGENT_DIR, getFlowsConfig, getLoopConfig, getMemoryConfig, loadAgentConfig } from "../lib/config";
 import { getCompactionInstructions } from "../lib/instructions/compaction";
 import { getHeartbeatInstructions } from "../lib/instructions/heartbeat";
 import { getPatternInstructions } from "../lib/loop-patterns";
@@ -25,12 +19,12 @@ import { loadSoulFiles } from "../lib/parsers";
 import { mcpClient } from "../mcp_client";
 import { sharedMemory } from "../memory";
 import { getAdaptationProcessor } from "../processors/adaptation-processor";
-import { getUserPreferencesProcessor } from "../processors/user-preferences";
 import { AdversarialPatternDetector } from "../processors/adversarial-detector";
 import { SecretMaskProcessor } from "../processors/secret-mask-processor";
 import { SecretSanitizerProcessor } from "../processors/secret-sanitizer-processor";
 import { TimeCompactionProcessor } from "../processors/time-compaction-processor";
 import { TokenCompactionProcessor } from "../processors/token-compaction-processor";
+import { getUserPreferencesProcessor } from "../processors/user-preferences";
 import { storage, vector } from "../storage";
 import { tools } from "../tools";
 import { dynamicFlowRouterWorkflow } from "../workflows/dynamic-flow-router";

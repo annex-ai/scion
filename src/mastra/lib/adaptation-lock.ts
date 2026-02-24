@@ -10,8 +10,8 @@
 
 import { existsSync, mkdirSync } from "node:fs";
 import { resolve } from "node:path";
-import { AGENT_DIR } from "./config";
 import { MAX_LOCK_AGE_MS } from "./adaptation-types";
+import { AGENT_DIR } from "./config";
 
 const LOCKS_DIR = resolve(AGENT_DIR, "adaptation/locks");
 
@@ -57,10 +57,7 @@ function getLockPath(name: string): string {
  * @param maxAgeMs - Maximum age of a lock before it's considered stale (default: 10 minutes)
  * @returns true if the lock was acquired, false otherwise
  */
-export async function acquireLock(
-  name: string,
-  maxAgeMs: number = MAX_LOCK_AGE_MS,
-): Promise<boolean> {
+export async function acquireLock(name: string, maxAgeMs: number = MAX_LOCK_AGE_MS): Promise<boolean> {
   ensureLocksDir();
   const lockPath = getLockPath(name);
 
@@ -83,13 +80,9 @@ export async function acquireLock(
             return false;
           }
           // Process no longer exists, lock is stale
-          console.log(
-            `[adaptation-lock] Stale lock '${name}' from dead process ${lockData.pid}, acquiring`,
-          );
+          console.log(`[adaptation-lock] Stale lock '${name}' from dead process ${lockData.pid}, acquiring`);
         } else if (age >= maxAgeMs) {
-          console.log(
-            `[adaptation-lock] Stale lock '${name}' (age: ${Math.round(age / 1000)}s), acquiring`,
-          );
+          console.log(`[adaptation-lock] Stale lock '${name}' (age: ${Math.round(age / 1000)}s), acquiring`);
         }
         // Lock is stale or held by us, proceed to overwrite
       } catch {
@@ -133,9 +126,7 @@ export async function releaseLock(name: string): Promise<void> {
             await file.delete();
             console.log(`[adaptation-lock] Released lock '${name}'`);
           } else {
-            console.warn(
-              `[adaptation-lock] Not releasing lock '${name}' - owned by process ${lockData.pid}`,
-            );
+            console.warn(`[adaptation-lock] Not releasing lock '${name}' - owned by process ${lockData.pid}`);
           }
         } catch {
           // Invalid lock file, delete it
@@ -184,10 +175,7 @@ export async function isLockHeld(name: string): Promise<boolean> {
  * @param fn - The function to execute while holding the lock
  * @returns The result of the function, or throws if lock couldn't be acquired
  */
-export async function withLock<T>(
-  name: string,
-  fn: () => Promise<T>,
-): Promise<T> {
+export async function withLock<T>(name: string, fn: () => Promise<T>): Promise<T> {
   if (!(await acquireLock(name))) {
     throw new Error(`Failed to acquire lock '${name}'`);
   }

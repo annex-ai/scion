@@ -7,21 +7,21 @@
  * Tests for the Observe → Reflect → Coach adaptation pipeline.
  */
 
-import { describe, it, expect, beforeEach, afterEach } from "bun:test";
-import { existsSync, rmSync, mkdirSync } from "node:fs";
+import { afterEach, beforeEach, describe, expect, it } from "bun:test";
+import { existsSync, mkdirSync, rmSync } from "node:fs";
 import { resolve } from "node:path";
-import { acquireLock, releaseLock, isLockHeld, withLock } from "./adaptation-lock";
+import { acquireLock, isLockHeld, releaseLock, withLock } from "./adaptation-lock";
 import {
-  ensureAdaptationDirs,
-  loadState,
-  saveState,
-  loadActivePatterns,
-  saveActivePatterns,
-  loadPendingSuggestions,
-  savePendingSuggestions,
-  generateId,
-  daysSince,
   ADAPTATION_DIR,
+  daysSince,
+  ensureAdaptationDirs,
+  generateId,
+  loadActivePatterns,
+  loadPendingSuggestions,
+  loadState,
+  saveActivePatterns,
+  savePendingSuggestions,
+  saveState,
 } from "./adaptation-storage";
 import type { AdaptationPattern, AdaptationState, CoachingSuggestion } from "./adaptation-types";
 

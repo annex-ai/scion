@@ -9,8 +9,7 @@
  */
 
 import { existsSync, mkdirSync, readdirSync, renameSync, unlinkSync } from "node:fs";
-import { resolve, dirname, basename } from "node:path";
-import { AGENT_DIR } from "./config";
+import { basename, dirname, resolve } from "node:path";
 import type {
   AdaptationMetrics,
   AdaptationPattern,
@@ -18,6 +17,7 @@ import type {
   CoachingSuggestion,
   Observation,
 } from "./adaptation-types";
+import { AGENT_DIR } from "./config";
 
 // Base directory for adaptation data
 export const ADAPTATION_DIR = resolve(AGENT_DIR, "adaptation");
@@ -123,9 +123,7 @@ export async function saveState(state: AdaptationState): Promise<boolean> {
 /**
  * Update the adaptation state with partial data.
  */
-export async function updateState(
-  updates: Partial<AdaptationState>,
-): Promise<boolean> {
+export async function updateState(updates: Partial<AdaptationState>): Promise<boolean> {
   const current = await loadState();
   return saveState({ ...current, ...updates });
 }
@@ -143,18 +141,14 @@ export async function loadActivePatterns(): Promise<AdaptationPattern[]> {
 /**
  * Save active patterns.
  */
-export async function saveActivePatterns(
-  patterns: AdaptationPattern[],
-): Promise<boolean> {
+export async function saveActivePatterns(patterns: AdaptationPattern[]): Promise<boolean> {
   return writeJson(ACTIVE_PATTERNS_FILE, patterns);
 }
 
 /**
  * Archive stale patterns.
  */
-export async function archivePatterns(
-  patterns: AdaptationPattern[],
-): Promise<boolean> {
+export async function archivePatterns(patterns: AdaptationPattern[]): Promise<boolean> {
   if (patterns.length === 0) return true;
 
   const date = new Date();
@@ -181,9 +175,7 @@ export function getObservationBatchPath(): string {
 /**
  * Save a batch of observations.
  */
-export async function saveObservations(
-  observations: Observation[],
-): Promise<boolean> {
+export async function saveObservations(observations: Observation[]): Promise<boolean> {
   if (observations.length === 0) return true;
   return writeJson(getObservationBatchPath(), observations);
 }
@@ -194,15 +186,11 @@ export async function saveObservations(
 export async function loadPendingObservations(): Promise<Observation[]> {
   ensureAdaptationDirs();
 
-  const files = readdirSync(OBSERVATIONS_PENDING_DIR).filter((f) =>
-    f.endsWith(".json"),
-  );
+  const files = readdirSync(OBSERVATIONS_PENDING_DIR).filter((f) => f.endsWith(".json"));
   const observations: Observation[] = [];
 
   for (const file of files) {
-    const batch = await readJson<Observation[]>(
-      resolve(OBSERVATIONS_PENDING_DIR, file),
-    );
+    const batch = await readJson<Observation[]>(resolve(OBSERVATIONS_PENDING_DIR, file));
     if (batch) {
       observations.push(...batch);
     }
@@ -217,9 +205,7 @@ export async function loadPendingObservations(): Promise<Observation[]> {
 export async function archiveProcessedObservations(): Promise<boolean> {
   ensureAdaptationDirs();
 
-  const files = readdirSync(OBSERVATIONS_PENDING_DIR).filter((f) =>
-    f.endsWith(".json"),
-  );
+  const files = readdirSync(OBSERVATIONS_PENDING_DIR).filter((f) => f.endsWith(".json"));
 
   if (files.length === 0) return true;
 
@@ -237,10 +223,7 @@ export async function archiveProcessedObservations(): Promise<boolean> {
     try {
       renameSync(src, dst);
     } catch (error) {
-      console.error(
-        `[adaptation-storage] Failed to archive observation ${file}:`,
-        error,
-      );
+      console.error(`[adaptation-storage] Failed to archive observation ${file}:`, error);
       return false;
     }
   }
@@ -261,18 +244,14 @@ export async function loadPendingSuggestions(): Promise<CoachingSuggestion[]> {
 /**
  * Save pending coaching suggestions.
  */
-export async function savePendingSuggestions(
-  suggestions: CoachingSuggestion[],
-): Promise<boolean> {
+export async function savePendingSuggestions(suggestions: CoachingSuggestion[]): Promise<boolean> {
   return writeJson(PENDING_COACHING_FILE, suggestions);
 }
 
 /**
  * Move a delivered suggestion to the delivered directory.
  */
-export async function moveToDelivered(
-  suggestion: CoachingSuggestion,
-): Promise<boolean> {
+export async function moveToDelivered(suggestion: CoachingSuggestion): Promise<boolean> {
   ensureAdaptationDirs();
 
   const date = new Date();
@@ -294,9 +273,7 @@ export async function moveToDelivered(
 /**
  * Load recently delivered suggestions within the specified window.
  */
-export async function loadRecentlyDelivered(
-  daysBack: number,
-): Promise<CoachingSuggestion[]> {
+export async function loadRecentlyDelivered(daysBack: number): Promise<CoachingSuggestion[]> {
   ensureAdaptationDirs();
 
   const suggestions: CoachingSuggestion[] = [];
@@ -323,9 +300,7 @@ export async function loadRecentlyDelivered(
 /**
  * Move expired suggestions to the expired directory.
  */
-export async function moveToExpired(
-  suggestions: CoachingSuggestion[],
-): Promise<boolean> {
+export async function moveToExpired(suggestions: CoachingSuggestion[]): Promise<boolean> {
   if (suggestions.length === 0) return true;
 
   ensureAdaptationDirs();

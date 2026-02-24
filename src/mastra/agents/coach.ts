@@ -13,21 +13,14 @@ import { z } from "zod";
 import { loadAgentConfig } from "../lib/config";
 
 const agentConfig = await loadAgentConfig();
-const coachModel =
-  agentConfig.models?.coach ??
-  agentConfig.models?.default;
+const coachModel = agentConfig.models?.coach ?? agentConfig.models?.default;
 
 /**
  * Schema for structured coaching output
  */
 export const coachingOutputSchema = z.object({
   suggestion: z.object({
-    type: z.enum([
-      "proactive_insight",
-      "skill_building",
-      "process_optimization",
-      "reflection_prompt",
-    ]),
+    type: z.enum(["proactive_insight", "skill_building", "process_optimization", "reflection_prompt"]),
     priority: z.enum(["high", "medium", "low"]),
     suggestion: z.string().describe("The coaching suggestion text"),
     triggerKeywords: z.array(z.string()).describe("Keywords that should trigger this suggestion"),

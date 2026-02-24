@@ -11,8 +11,6 @@ import { compactionAgent } from "./agents/compaction";
 import { interactiveAgent } from "./agents/interactive";
 import { observerAgent } from "./agents/observer";
 import { taskAgent } from "./agents/task";
-// Legacy agent - kept for backwards compatibility during migration
-import { reflectorAgent } from "./legacy/reflector";
 // Import gateway integration
 import {
   getGatewayInstance,
@@ -22,18 +20,20 @@ import {
   stopGateway,
 } from "./gateway/integration";
 import { GatewaySecurityValidator, extractClientIp } from "./gateway/security";
+// Legacy agent - kept for backwards compatibility during migration
+import { reflectorAgent } from "./legacy/reflector";
 
 import { serve } from "@mastra/inngest";
 import { inngest } from "./inngest";
-import { storage } from "./storage";
-import { dynamicFlowRouterWorkflow } from "./workflows/dynamic-flow-router";
-import { nativeFlowExecutionWorkflow } from "./workflows/native-flow-execution-workflow";
-import { adaptationMasterWorkflow } from "./workflows/adaptation-master";
-import { coachWorkflow } from "./workflows/coach-workflow";
-import { observeWorkflow } from "./workflows/observe-workflow";
-import { reflectWorkflow } from "./workflows/reflect-workflow";
 // Legacy workflow - kept for backwards compatibility during migration
 import { reflectionWorkflow } from "./legacy/reflection-workflow";
+import { storage } from "./storage";
+import { adaptationMasterWorkflow } from "./workflows/adaptation-master";
+import { coachWorkflow } from "./workflows/coach-workflow";
+import { dynamicFlowRouterWorkflow } from "./workflows/dynamic-flow-router";
+import { nativeFlowExecutionWorkflow } from "./workflows/native-flow-execution-workflow";
+import { observeWorkflow } from "./workflows/observe-workflow";
+import { reflectWorkflow } from "./workflows/reflect-workflow";
 
 import { handleHeartbeatAlert } from "./gateway/handlers/alert-handler";
 

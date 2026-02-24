@@ -21,11 +21,7 @@ export const triggerAdaptationTool = createTool({
       .optional()
       .default("all")
       .describe("Which stage to run: all, observe, reflect, or coach"),
-    resourceId: z
-      .string()
-      .optional()
-      .default("interactive-agent")
-      .describe("Resource ID to process"),
+    resourceId: z.string().optional().default("interactive-agent").describe("Resource ID to process"),
   }),
   outputSchema: z.object({
     success: z.boolean(),

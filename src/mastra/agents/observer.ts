@@ -13,10 +13,7 @@ import { z } from "zod";
 import { loadAgentConfig } from "../lib/config";
 
 const agentConfig = await loadAgentConfig();
-const observerModel =
-  agentConfig.models?.observer ??
-  agentConfig.models?.fast ??
-  agentConfig.models?.default;
+const observerModel = agentConfig.models?.observer ?? agentConfig.models?.fast ?? agentConfig.models?.default;
 
 /**
  * Schema for structured observation output
