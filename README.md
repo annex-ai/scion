@@ -32,7 +32,7 @@ An autonomous AI agent with multi-channel messaging, proactive notifications, an
                               └─────────┬──────────┘
                                         │
                               ┌─────────▼──────────┐
-                              │   Ralph Loop        │
+                              │   Agentic Loop      │
                               │  plan → execute →   │
                               │  assess → iterate   │
                               └─────────┬──────────┘
@@ -255,9 +255,17 @@ See [docs/PROCESS_MANAGEMENT.md](docs/PROCESS_MANAGEMENT.md) for the complete pr
 
 ---
 
-## Agentic Loop (Ralph)
+## Agentic Loops
 
-Ralph is the self-directed task execution loop. When enabled, the agent can decompose complex requests into multi-step plans and iterate autonomously.
+Scion supports 5 configurable orchestration patterns via the `[loop]` section in `agent.toml`. Each pattern defines how the agent approaches tasks — from single-agent iteration to multi-agent coordination.
+
+| Pattern | Phases | Best For |
+|---------|--------|----------|
+| **kimi-loop** (default) | Plan → Execute → Verify | General-purpose task execution, coding, multi-step problems |
+| **task-based** | Planning → Execution → Finalization | Structured task decomposition with sequential execution |
+| **ralph-loop** | Gather → Analyze → Synthesize | Research questions, information gathering, comparative analysis |
+| **agent-swarm** | Plan → Delegate → Collect → Synthesize | Tasks requiring diverse expertise via `delegate-to-agent` |
+| **agent-team** | Staff → Plan → Handoff → Review → Deliver | Complex projects with interdependent components via `handoff-to-agent` |
 
 | Setting | Default | Description |
 |---------|---------|-------------|
@@ -269,9 +277,9 @@ Ralph is the self-directed task execution loop. When enabled, the agent can deco
 
 **Working memory schema:** goal, task queue with priorities, progress log, scratchpad notes
 
-**Skills drive the loop** — the `default-ralph` skill defines the single-iteration flow. Other skills (code-review, project-planner, content-writer, etc.) provide specialized multi-step workflows compiled from Mermaid flowcharts in `SKILL.md` files.
-
 **Completion protocol:** on STOP, the agent delivers a structured summary to the user with results, decisions made, and any items needing attention.
+
+See [docs/LOOP_PATTERNS.md](docs/LOOP_PATTERNS.md) for detailed pattern documentation and how to add custom patterns.
 
 ---
 
@@ -408,6 +416,7 @@ See [docs/CHANNEL_AUTH_METHODS.md](docs/CHANNEL_AUTH_METHODS.md) for channel-spe
 | [TASK_TOOLS.md](docs/TASK_TOOLS.md) | Task management and orchestration tools |
 | [PROCESS_MANAGEMENT.md](docs/PROCESS_MANAGEMENT.md) | Bash PTY/background modes and process management |
 | [SKILL_SPEC.md](docs/SKILL_SPEC.md) | Skill definition format and flow compiler |
+| [LOOP_PATTERNS.md](docs/LOOP_PATTERNS.md) | Configurable agentic loop patterns |
 | [SECURITY_ASSESSMENT.md](docs/SECURITY_ASSESSMENT.md) | Security model and threat assessment |
 | [MEMORY_SCHEMA_ERD.md](docs/MEMORY_SCHEMA_ERD.md) | Memory database schema |
 | [PROMPT_INJECTION_DETECTOR.md](docs/PROMPT_INJECTION_DETECTOR.md) | Prompt injection detection design |
