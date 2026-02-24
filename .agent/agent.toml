@@ -1,0 +1,167 @@
+# Agent Configuration
+# Located at .agent/agent.toml
+
+[identity]
+name = "Scion"
+role = "AI Assistant"
+purpose = "Help users with software engineering, code analysis, and general tasks"
+
+[archetype]
+type = "sage"
+
+[soul]
+openness = 0.8
+conscientiousness = 0.7
+extraversion = 0.4
+agreeableness = 0.6
+neuroticism = 0.3
+
+[models]
+default = "zai-coding-plan/glm-5"
+fast = "zai-coding-plan/glm-4.5-air"
+moderation = "openrouter/openai/gpt-oss-safeguard-20b"
+# Other models default to 'fast' if not specified:
+# reflector, prompt_injection, pii_detection, compaction_model, scorer_model
+#reflector = "zai-coding-plan/glm-4.5-air"
+#prompt_injection = "openrouter/openai/gpt-oss-safeguard-20b"
+#pii_detection = "openrouter/openai/gpt-oss-safeguard-20b"
+#compaction_model = "zai-coding-plan/glm-4.5-air"
+#scorer_model = "zai-coding-plan/glm-4.5-air"
+
+[loop]
+# Agent loop pattern: task-based | ralph-loop | agent-swarm | agent-team | kimi-loop
+pattern = "kimi-loop"
+max_iterations = 3
+max_steps_per_turn = 50
+max_retries_per_step = 3
+
+[loop.ralph]
+auto_approve_tools = false
+confirm_destructive = true
+
+[loop.swarm]
+max_parallel_delegations = 5
+delegation_timeout_ms = 120000
+enable_caching = true
+
+[loop.team]
+max_team_members = 5
+max_revisions = 3
+handoff_timeout_ms = 120000
+compress_shared_context = true
+
+[memory]
+database_url = "data/local.db"
+last_messages = 30
+semantic_recall_top_k = 5
+semantic_recall_message_range = 2
+semantic_recall_scope = "resource"
+working_memory_enabled = true
+working_memory_scope = "resource"
+
+[security]
+resource_id = "interactive-agent"
+enablePiiDetection = false
+enablePromptInjectionDetection = false
+enableAdversarialPatternDetection = false
+enableUnicodeNormalization = false
+enableBatchPartsProcessor = true
+enableSecretProtection = true
+
+# SSRF Protection
+# Default: Permissive mode (allows all URLs except cloud metadata)
+# Strict mode: Only allows whitelisted URLs
+# [security.ssrf]
+# strict = false  # Set to true to enable whitelist mode
+# blockMetadata = true  # Always block cloud metadata endpoints
+# whitelist = [           # Only used when strict = true
+#   "https://api.openai.com",
+#   "https://api.anthropic.com", 
+#   "https://html.duckduckgo.com",
+#   "localhost:4111",     # Allow local gateway
+#   "127.0.0.1:4111",
+# ]
+# blockedHosts = []       # Additional hostnames to block
+
+[server]
+timeout = 600000
+host = "0.0.0.0"
+port = 4111
+
+[services]
+# Background services
+cron = true
+heartbeat = true
+reflection = true
+
+[heartbeat]
+quiet_mode = false
+alert_threshold = 1
+
+[heartbeat.hours]
+start = 0
+end = 23
+timezone = "Asia/Bangkok"
+interval_minutes = 30
+
+[heartbeat.checks]
+task_state = true
+reminders = true
+context_continuity = true
+background_tasks = true
+message_history = true
+
+[[heartbeat.targets]]
+type = "slack"
+target = "general"
+
+[cron]
+cron_md_path = "CRON.md"
+poll_interval_seconds = 30
+thread_ttl_days = 7
+cleanup_interval_ms = 3600000
+
+[attention_steering]
+enable_reflections = true
+cron_schedule = "*/5 * * * *"
+min_batch_size = 10
+max_pending_minutes = 30
+max_messages_per_run = 100
+reflections_md_path = "REFLECTIONS.md"
+reflection_state_path = "reflection-state.json"
+
+[compaction]
+enable_compaction = true
+mode = "token_compaction"
+max_context_tokens = 35000
+trigger_threshold = 25000
+preserve_duration_minutes = 60
+preserve_recent_messages = 10
+strategy = "summarize"
+max_summary_length = 2500
+preserve_decisions = true
+preserve_errors = true
+preserve_user_preferences = true
+
+[workspace]
+name = "agent-workspace"
+# Path to the workspace directory (project root)
+workspace_dir = "."
+# Path to the sandbox directory (for isolated operations)
+sandbox_dir = "./sandbox"
+# Skills are loaded from these paths using Mastra's workspace skill system
+# Each skill directory should contain a SKILL.md file
+skills_path = [".agent/skills"]
+
+[flows]
+paths = [".agent/flows"]
+auto_compile = true
+
+# Gateway Inbound Security
+# IP-based access control for incoming requests
+# [gateway.security]
+# default_policy = "allow"     # "allow" (default) or "deny"
+# whitelist_ips = []            # IPs/CIDRs always allowed (used when default_policy = "deny")
+# blacklist_ips = []            # IPs/CIDRs always blocked
+# trust_proxy = false           # Trust X-Forwarded-For header
+# trusted_proxies = []          # Proxy IPs to skip in X-Forwarded-For chain

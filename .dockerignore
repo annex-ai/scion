@@ -1,0 +1,17 @@
+node_modules/
+.mastra/
+.env
+.env.*
+*.db
+*.db-wal
+*.db-shm
+.git/
+coverage/
+dist/
+out/
+*.tgz
+*.lcov
+.idea/
+.DS_Store
+.cache/
+.eslintcache

@@ -1,0 +1,70 @@
+# Dependencies
+node_modules
+
+# Build output
+out
+dist
+*.tgz
+
+# Code coverage
+coverage
+*.lcov
+
+# Logs
+logs
+*.log
+report.[0-9]*.[0-9]*.[0-9]*.[0-9]*.json
+
+# Environment variables
+.env
+.env.local
+.env.development
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Caches
+.eslintcache
+.cache
+*.tsbuildinfo
+
+# Mastra build output
+.mastra
+
+# Databases
+*.db
+*.db-*
+
+# IDE
+.idea
+.vscode
+
+# OS
+.DS_Store
+output.txt
+
+# Runtime data
+src/mastra/public/.blackboard/
+src/mastra/public/.marco/
+src/mastra/public/.scion/
+src/mastra/public/*-temp-file.txt
+src/mastra/public/*-test.txt
+src/mastra/public/mcp.json
+
+# Agent runtime state (user-specific, not tracked)
+.agent/data/
+.agent/CRON.md
+.agent/REFLECTIONS.md
+.agent/HEARTBEAT.md
+.agent/heartbeat-state.json
+.agent/reflection-state.json
+.agent/USER.md
+.agent/mcp.json
+.agent/whatsapp-session/
+
+# Internal planning docs
+opensource_roadmap.md
+
+# Claude Code
+.claude/
+gitleaks
