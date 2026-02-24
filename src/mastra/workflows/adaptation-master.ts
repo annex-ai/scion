@@ -15,7 +15,8 @@
 
 import { createStep, createWorkflow } from "@mastra/core/workflows";
 import { z } from "zod";
-import { ensureAdaptationDirs, updateMetrics } from "../lib/adaptation-storage";
+import { releaseLock } from "../lib/adaptation-lock";
+import { ensureAdaptationDirs } from "../lib/adaptation-storage";
 import { getAdaptationConfig } from "../lib/config";
 
 // ============================================================================
@@ -125,6 +126,8 @@ const runObserveStep = createStep({
       };
     } catch (error) {
       console.error("[Adaptation Master] Observe stage failed:", error);
+      // Clean up lock in case the workflow failed before releaseLock step
+      await releaseLock("observe").catch(() => {});
       return {
         resourceId,
         stage,
@@ -186,6 +189,8 @@ const runReflectStep = createStep({
       };
     } catch (error) {
       console.error("[Adaptation Master] Reflect stage failed:", error);
+      // Clean up lock in case the workflow failed before releaseLock step
+      await releaseLock("reflect").catch(() => {});
       return {
         resourceId,
         stage,
@@ -259,6 +264,8 @@ const runCoachStep = createStep({
       };
     } catch (error) {
       console.error("[Adaptation Master] Coach stage failed:", error);
+      // Clean up lock in case the workflow failed before releaseLock step
+      await releaseLock("coach").catch(() => {});
       return {
         observeResult,
         reflectResult,
