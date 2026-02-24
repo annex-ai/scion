@@ -4,15 +4,20 @@
 import { resolve } from "node:path";
 import { Agent } from "@mastra/core/agent";
 import { ModelRouterEmbeddingModel } from "@mastra/core/llm";
-import { PIIDetector, SkillsProcessor } from "@mastra/core/processors";
-import { BatchPartsProcessor, PromptInjectionDetector, UnicodeNormalizer } from "@mastra/core/processors";
-import { TokenLimiterProcessor } from "@mastra/core/processors";
+import {
+  BatchPartsProcessor,
+  PIIDetector,
+  PromptInjectionDetector,
+  SkillsProcessor,
+  UnicodeNormalizer,
+} from "@mastra/core/processors";
+// REMOVED: TokenLimiterProcessor - compaction replaced by Observational Memory
 import { createAnswerRelevancyScorer, createToxicityScorer } from "@mastra/evals/scorers/prebuilt";
 import { fastembed } from "@mastra/fastembed";
 import { Memory } from "@mastra/memory";
 import { loadFlows, toWorkflowsRecord } from "../flows";
 import { AGENT_DIR, getFlowsConfig, getLoopConfig, getMemoryConfig, loadAgentConfig } from "../lib/config";
-import { getCompactionInstructions } from "../lib/instructions/compaction";
+// REMOVED: getCompactionInstructions - replaced by Observational Memory
 import { getHeartbeatInstructions } from "../lib/instructions/heartbeat";
 import { getPatternInstructions } from "../lib/loop-patterns";
 import { loadSoulFiles } from "../lib/parsers";
@@ -22,8 +27,7 @@ import { getAdaptationProcessor } from "../processors/adaptation-processor";
 import { AdversarialPatternDetector } from "../processors/adversarial-detector";
 import { SecretMaskProcessor } from "../processors/secret-mask-processor";
 import { SecretSanitizerProcessor } from "../processors/secret-sanitizer-processor";
-import { TimeCompactionProcessor } from "../processors/time-compaction-processor";
-import { TokenCompactionProcessor } from "../processors/token-compaction-processor";
+// REMOVED: TimeCompactionProcessor and TokenCompactionProcessor - replaced by Observational Memory
 import { getUserPreferencesProcessor } from "../processors/user-preferences";
 import { storage, vector } from "../storage";
 import { tools } from "../tools";
@@ -82,8 +86,7 @@ const enableBatchPartsProcessor = agentConfig.security?.enableBatchPartsProcesso
 const enableSecretProtection = agentConfig.security?.enableSecretProtection ?? true;
 const secretMaskProcessor = enableSecretProtection ? new SecretMaskProcessor({ debug: false }) : null;
 const secretSanitizerProcessor = enableSecretProtection ? new SecretSanitizerProcessor({ debug: false }) : null;
-const enableCompaction = agentConfig.compaction?.enable_compaction ?? false;
-const compactionConfig = agentConfig.compaction;
+// REMOVED: compaction config variables - replaced by Observational Memory
 
 // Load flows from FLOW.md files
 const flowsConfig = await getFlowsConfig();
@@ -153,67 +156,13 @@ console.log(
   `[interactive-agent] Memory config from agent.toml: lastMessages=${memoryConfig.last_messages}, topK=${memoryConfig.semantic_recall_top_k}, messageRange=${memoryConfig.semantic_recall_message_range}`,
 );
 
-// Load compaction config
-console.log(
-  `[interactive-agent] Compaction: mode=${compactionConfig?.mode}, threshold=${compactionConfig?.trigger_threshold}, max=${compactionConfig?.max_context_tokens}`,
-);
+// REMOVED: Compaction logging - replaced by Observational Memory
 
 // Load loop pattern config
 const loopConfig = await getLoopConfig();
 console.log(`[interactive-agent] Loop pattern: ${loopConfig.pattern}`);
 
-/**
- * Build context processors from compaction config.
- *
- * These processors run AFTER memory processors (MessageHistory, SemanticRecall)
- * according to Mastra's processor execution order:
- * [Memory Processors] → [Your inputProcessors]
- */
-function buildContextProcessors(compactionConfig: any) {
-  const processors: any[] = [];
-
-  if (!compactionConfig) {
-    return processors;
-  }
-
-  // Compaction (manages context size)
-  switch (compactionConfig.mode) {
-    case "token_limiter":
-      processors.push(
-        new TokenLimiterProcessor({
-          limit: compactionConfig.trigger_threshold,
-        }),
-      );
-      break;
-
-    case "token_compaction":
-      processors.push(
-        new TokenCompactionProcessor({
-          tokenThreshold: compactionConfig.trigger_threshold,
-          preserveRecentMessages: compactionConfig.preserve_recent_messages,
-          strategy: compactionConfig.strategy,
-          compactionModel: compactionConfig.model,
-          maxSummaryLength: compactionConfig.max_summary_length,
-          preserveDecisions: compactionConfig.preserve_decisions,
-          preserveErrors: compactionConfig.preserve_errors,
-          hardTokenLimit: compactionConfig.max_context_tokens,
-        }),
-      );
-      break;
-
-    case "time_based":
-      processors.push(
-        new TimeCompactionProcessor({
-          preserveDurationMinutes: compactionConfig.preserve_duration_minutes,
-        }),
-      );
-      break;
-  }
-
-  return processors;
-}
-
-const contextProcessors = buildContextProcessors(compactionConfig);
+// REMOVED: buildContextProcessors function and contextProcessors - replaced by Observational Memory
 
 export const interactiveAgent = new Agent({
   id: "interactive-agent",
@@ -236,9 +185,6 @@ export const interactiveAgent = new Agent({
     if (channelId) {
       console.log(`[interactive-agent] Channel ID: ${channelId}, Channel Type: ${channelType}`);
     }
-
-    // Build context info for instructions
-    const strategyInfo = getCompactionInstructions(compactionConfig);
 
     // Build channel context section if available
     const channelContextSection = channelId
@@ -265,8 +211,6 @@ export const interactiveAgent = new Agent({
     ## User
     ${user}
 
-    ${strategyInfo}
-
     ${channelContextSection}
 
     ${getPatternInstructions(loopConfig.pattern)}
@@ -291,8 +235,7 @@ export const interactiveAgent = new Agent({
     ...(adversarialPatternDetector ? [adversarialPatternDetector] : []),
     // 3. LLM-based prompt injection detection (adds ~1 LLM call per message)
     ...(promptInjectionProcessor ? [promptInjectionProcessor] : []),
-    // 4. Context management processors (compaction, etc. based on config)
-    ...contextProcessors,
+    // 4. Context management: REMOVED - now handled by Observational Memory in memory.ts
     // 5. Skills loading
     new SkillsProcessor({ workspace }),
     // 6. User preferences

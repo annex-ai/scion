@@ -138,7 +138,8 @@ describe("Memory Config", () => {
     expect(memory.semantic_recall_top_k).toBe(5);
     expect(memory.semantic_recall_message_range).toBe(2);
     expect(memory.semantic_recall_scope).toBe("resource");
-    expect(memory.working_memory_enabled).toBe(true);
+    // Working memory disabled - replaced by Observational Memory
+    expect(memory.working_memory_enabled).toBe(false);
     expect(memory.working_memory_scope).toBe("resource");
   });
 

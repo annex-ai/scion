@@ -34,14 +34,25 @@ export const sharedMemory = new Memory({
   vector,
   options: {
     lastMessages: memoryConfig.last_messages,
+    // DISABLED: Working memory replaced by Observational Memory
     workingMemory: {
-      enabled: memoryConfig.working_memory_enabled,
-      scope: memoryConfig.working_memory_scope,
+      enabled: false,
     },
     semanticRecall: {
       topK: memoryConfig.semantic_recall_top_k,
       messageRange: memoryConfig.semantic_recall_message_range,
       scope: memoryConfig.semantic_recall_scope,
+    },
+    // Observational Memory replaces compaction AND working memory
+    observationalMemory: {
+      model: memoryConfig.om_model ?? "google/gemini-2.5-flash",
+      scope: "resource", // cross-thread memory
+      observation: {
+        messageTokens: memoryConfig.om_observation_threshold ?? 50_000,
+      },
+      reflection: {
+        observationTokens: memoryConfig.om_reflection_threshold ?? 60_000,
+      },
     },
   },
 });
