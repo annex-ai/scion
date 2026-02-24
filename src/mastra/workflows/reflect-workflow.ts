@@ -478,7 +478,43 @@ function createPatternFromObservation(obs: Observation): AdaptationPattern {
     confidence: obs.confidence,
     occurrences: 1,
     sourceObservations: [obs.id],
+    coachingPriority: determineCoachingPriority(obs),
   };
+}
+
+/**
+ * Determine coaching priority based on observation type.
+ * Higher priority for explicit signals, lower for inferred.
+ */
+function determineCoachingPriority(
+  obs: Observation,
+): "high" | "medium" | "low" | undefined {
+  // Explicit frustration or correction = high priority
+  if (obs.type === "user_frustration" || obs.type === "user_correction") {
+    return obs.confidence >= 0.8 ? "high" : "medium";
+  }
+
+  // Repeated requests or workflow friction = medium priority
+  if (obs.type === "repeated_request" || obs.type === "workflow_friction") {
+    return "medium";
+  }
+
+  // Skill gaps and coaching opportunities = medium/low
+  if (obs.type === "skill_gap" || obs.type === "coaching_opportunity") {
+    return obs.confidence >= 0.7 ? "medium" : "low";
+  }
+
+  // Positive feedback doesn't need coaching
+  if (obs.type === "positive_feedback") {
+    return undefined; // No coaching needed
+  }
+
+  // Preferences = low priority (subtle guidance)
+  if (obs.type === "preference_signal") {
+    return "low";
+  }
+
+  return undefined;
 }
 
 /**
