@@ -246,13 +246,13 @@ const servicesSchema = z.object({
 
 // Adaptation System Configuration (Observe → Reflect → Coach)
 const adaptationSchema = z.object({
-  enabled: z.boolean().default(true),
-  max_messages_per_run: z.number().int().min(1).default(100),
-  max_instruction_patterns: z.number().int().min(1).default(15),
-  observer_batch_size: z.number().int().min(1).default(5),
-  coaching_enabled: z.boolean().default(true),
-  coaching_max_pending: z.number().int().min(1).default(3),
-  coaching_dedup_window_days: z.number().int().min(1).default(7),
+  enabled: z.boolean(),
+  max_messages_per_run: z.number().int().min(1),
+  max_instruction_patterns: z.number().int().min(1),
+  observer_batch_size: z.number().int().min(1),
+  coaching_enabled: z.boolean(),
+  coaching_max_pending: z.number().int().min(1),
+  coaching_dedup_window_days: z.number().int().min(1),
 });
 
 const agentConfigSchema = z.object({
@@ -265,7 +265,7 @@ const agentConfigSchema = z.object({
   services: servicesSchema,
   heartbeat: heartbeatSchema.optional(),
   attention_steering: attentionSteeringSchema,
-  adaptation: adaptationSchema.optional(),
+  adaptation: adaptationSchema,
   security: securitySchema.optional(),
   memory: memorySchema.optional(),
   server: serverSchema.optional(),
@@ -611,19 +611,9 @@ export async function getGatewaySecurityConfig(): Promise<GatewaySecuritySection
 
 /**
  * Get adaptation configuration from agent config
- * Returns defaults if [adaptation] section is missing
+ * Throws if [adaptation] section is missing
  */
 export async function getAdaptationConfig(): Promise<AdaptationSection> {
   const config = await loadAgentConfig();
-  return (
-    config.adaptation ?? {
-      enabled: true,
-      max_messages_per_run: 100,
-      max_instruction_patterns: 15,
-      observer_batch_size: 5,
-      coaching_enabled: true,
-      coaching_max_pending: 3,
-      coaching_dedup_window_days: 7,
-    }
-  );
+  return config.adaptation;
 }
