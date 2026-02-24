@@ -64,6 +64,7 @@ src/mastra/public/mcp.json
 
 # Internal planning docs
 opensource_roadmap.md
+PLAN_HARNESS_TUI_OM.md
 
 # Claude Code
 .claude/
