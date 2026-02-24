@@ -33,7 +33,7 @@ import { RequestContext } from "@mastra/core/request-context";
 import { getLoopConfig, getSecurityConfig } from "../lib/config";
 import { formatMediaIntoMessage } from "./channels/media/format.js";
 import { processMediaAttachments } from "./channels/media/understand.js";
-import { type InboundMessage, type OutboundAttachment, createThreadKey } from "./channels/types";
+import { createThreadKey, type InboundMessage, type OutboundAttachment } from "./channels/types";
 import { logger } from "./logger";
 
 /**

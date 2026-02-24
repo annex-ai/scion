@@ -3,8 +3,8 @@
 
 export { IMessageAdapter } from "./adapter";
 export {
-  toInboundMessage,
-  toIMessageFormat,
   chunkForIMessage,
   type IMessageMessageEvent,
+  toIMessageFormat,
+  toInboundMessage,
 } from "./format";

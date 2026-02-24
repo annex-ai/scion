@@ -7,12 +7,11 @@
  * Tests actual process spawning, not mocked.
  */
 import { beforeEach, expect, test } from "bun:test";
-import { getProcess, killProcess, listProcesses, removeProcess } from "../process-registry";
-
 // Direct function imports for testing (not through Mastra createTool wrapper)
 // We'll test the tool execute functions directly
 import { bashTool } from "../bash";
 import { processTool } from "../process";
+import { getProcess, killProcess, listProcesses, removeProcess } from "../process-registry";
 
 beforeEach(async () => {
   // Kill and remove all processes from prior tests

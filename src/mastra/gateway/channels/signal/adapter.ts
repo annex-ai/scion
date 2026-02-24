@@ -9,7 +9,7 @@ import { readFile } from "node:fs/promises";
 import { logger } from "../../logger";
 import { saveMediaBuffer } from "../media";
 import type { ChannelAdapter, InboundAttachment, InboundMessage, OutboundMessage, SignalChannelConfig } from "../types";
-import { type SignalMessageEvent, chunkForSignal, toInboundMessage, toSignalFormat } from "./format";
+import { chunkForSignal, type SignalMessageEvent, toInboundMessage, toSignalFormat } from "./format";
 
 /**
  * Signal channel adapter

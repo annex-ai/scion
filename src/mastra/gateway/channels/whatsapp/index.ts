@@ -3,8 +3,8 @@
 
 export { WhatsAppAdapter } from "./adapter";
 export {
+  chunkForWhatsApp,
   toInboundMessage,
   toWhatsAppFormat,
-  chunkForWhatsApp,
   type WhatsAppMessageEvent,
 } from "./format";

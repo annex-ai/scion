@@ -7,7 +7,7 @@
  * Validates URLs before fetching and validates redirect locations.
  */
 
-import { type SSRFConfig, SSRFValidator, SecurityError } from "./ssrf-validator";
+import { SecurityError, type SSRFConfig, SSRFValidator } from "./ssrf-validator";
 
 export interface SafeFetchOptions extends RequestInit {
   maxRedirects?: number;

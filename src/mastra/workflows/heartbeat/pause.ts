@@ -8,7 +8,7 @@
  */
 
 import { z } from "zod";
-import { type HeartbeatState, type PauseState, loadState, saveState } from "./state";
+import { type HeartbeatState, loadState, type PauseState, saveState } from "./state";
 
 // ============================================================================
 // Schemas

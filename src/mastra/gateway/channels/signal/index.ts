@@ -3,8 +3,8 @@
 
 export { SignalAdapter } from "./adapter";
 export {
-  toInboundMessage,
-  toSignalFormat,
   chunkForSignal,
   type SignalMessageEvent,
+  toInboundMessage,
+  toSignalFormat,
 } from "./format";

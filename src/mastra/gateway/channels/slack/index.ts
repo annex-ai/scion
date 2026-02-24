@@ -2,5 +2,5 @@
 // Copyright (C) 2025-2026 Sacha Nelson
 
 export { SlackAdapter } from "./adapter";
-export { toInboundMessage, toSlackFormat, fromSlackFormat, chunkForSlack } from "./format";
 export type { SlackMessageEvent, SlackUserInfo } from "./format";
+export { chunkForSlack, fromSlackFormat, toInboundMessage, toSlackFormat } from "./format";

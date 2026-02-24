@@ -17,10 +17,7 @@ export class SafeOpenError extends Error {
  * Open a file safely, ensuring it stays within the given root directory.
  * Prevents path traversal attacks.
  */
-export async function openFileWithinRoot(params: {
-  rootDir: string;
-  relativePath: string;
-}): Promise<{
+export async function openFileWithinRoot(params: { rootDir: string; relativePath: string }): Promise<{
   handle: fs.FileHandle;
   realPath: string;
   stat: Awaited<ReturnType<typeof fs.stat>>;

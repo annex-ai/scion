@@ -11,31 +11,28 @@
  * For system-level scheduled tasks, see HeartbeatService and ReflectionService.
  */
 
-// Types
-export type {
-  Schedule,
-  ScheduleTarget,
-  CronConfig,
-  ActiveSchedule,
-  CronMdResult,
-} from "./types";
-
-export { ScheduleSchema, ScheduleTargetSchema, SchedulesSchema } from "./types";
-
+// Executor
+export {
+  clearChannels,
+  createSyntheticMessage,
+  executeSchedule,
+  getChannel,
+  registerChannel,
+  unregisterChannel,
+} from "./executor";
 // Service
 export {
   CronService,
-  getCronService,
   createCronService,
   destroyCronService,
+  getCronService,
 } from "./service";
-
-// Executor
-export {
-  executeSchedule,
-  createSyntheticMessage,
-  registerChannel,
-  unregisterChannel,
-  clearChannels,
-  getChannel,
-} from "./executor";
+// Types
+export type {
+  ActiveSchedule,
+  CronConfig,
+  CronMdResult,
+  Schedule,
+  ScheduleTarget,
+} from "./types";
+export { ScheduleSchema, SchedulesSchema, ScheduleTargetSchema } from "./types";

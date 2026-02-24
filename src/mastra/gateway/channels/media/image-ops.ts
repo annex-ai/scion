@@ -4,9 +4,8 @@
 import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
-import { runExec } from "../../process/exec.js";
-
 import sharpModule from "sharp";
+import { runExec } from "../../process/exec.js";
 
 type Sharp = typeof sharpModule;
 
@@ -160,11 +159,7 @@ async function sipsMetadataFromBuffer(buffer: Buffer): Promise<ImageMetadata | n
   });
 }
 
-async function sipsResizeToJpeg(params: {
-  buffer: Buffer;
-  maxSide: number;
-  quality: number;
-}): Promise<Buffer> {
+async function sipsResizeToJpeg(params: { buffer: Buffer; maxSide: number; quality: number }): Promise<Buffer> {
   return await withTempDir(async (dir) => {
     const input = path.join(dir, "in.img");
     const output = path.join(dir, "out.jpg");

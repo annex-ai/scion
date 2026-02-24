@@ -11,9 +11,7 @@ export type ModelCatalogEntry = {
   [key: string]: unknown;
 };
 
-export async function loadModelCatalog(_params: {
-  config: ScionConfig;
-}): Promise<ModelCatalogEntry[]> {
+export async function loadModelCatalog(_params: { config: ScionConfig }): Promise<ModelCatalogEntry[]> {
   return [];
 }
 

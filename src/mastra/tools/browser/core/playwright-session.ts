@@ -126,11 +126,7 @@ export function storeRoleRefsForTarget(opts: {
   });
 }
 
-export function restoreRoleRefsForTarget(opts: {
-  cdpUrl: string;
-  targetId?: string;
-  page: Page;
-}): void {
+export function restoreRoleRefsForTarget(opts: { cdpUrl: string; targetId?: string; page: Page }): void {
   const tid = opts.targetId?.trim() || "";
   if (!tid) return;
   const entry = roleRefsByTarget.get(refsCacheKey(opts.cdpUrl, tid));
@@ -345,10 +341,7 @@ async function findByTargetId(browser: Browser, targetId: string, cdpUrl?: strin
 // Public: page operations
 // ---------------------------------------------------------------------------
 
-export async function getPageForTargetId(opts: {
-  cdpUrl: string;
-  targetId?: string;
-}): Promise<Page> {
+export async function getPageForTargetId(opts: { cdpUrl: string; targetId?: string }): Promise<Page> {
   const { browser } = await connectBrowser(opts.cdpUrl);
   const pages = await allPages(browser);
   if (!pages.length) throw new Error("No pages available in the connected browser.");
@@ -394,9 +387,9 @@ export async function closePlaywrightBrowserConnection(): Promise<void> {
   if (cur) await cur.browser.close().catch(() => {});
 }
 
-export async function listPagesViaPlaywright(opts: { cdpUrl: string }): Promise<
-  Array<{ targetId: string; title: string; url: string; type: string }>
-> {
+export async function listPagesViaPlaywright(opts: {
+  cdpUrl: string;
+}): Promise<Array<{ targetId: string; title: string; url: string; type: string }>> {
   const { browser } = await connectBrowser(opts.cdpUrl);
   const results: Array<{ targetId: string; title: string; url: string; type: string }> = [];
   for (const page of await allPages(browser)) {
@@ -440,20 +433,14 @@ export async function createPageViaPlaywright(opts: {
   };
 }
 
-export async function closePageByTargetIdViaPlaywright(opts: {
-  cdpUrl: string;
-  targetId: string;
-}): Promise<void> {
+export async function closePageByTargetIdViaPlaywright(opts: { cdpUrl: string; targetId: string }): Promise<void> {
   const { browser } = await connectBrowser(opts.cdpUrl);
   const page = await findByTargetId(browser, opts.targetId, opts.cdpUrl);
   if (!page) throw new Error("tab not found");
   await page.close();
 }
 
-export async function focusPageByTargetIdViaPlaywright(opts: {
-  cdpUrl: string;
-  targetId: string;
-}): Promise<void> {
+export async function focusPageByTargetIdViaPlaywright(opts: { cdpUrl: string; targetId: string }): Promise<void> {
   const { browser } = await connectBrowser(opts.cdpUrl);
   const page = await findByTargetId(browser, opts.targetId, opts.cdpUrl);
   if (!page) throw new Error("tab not found");

@@ -13,38 +13,36 @@
 
 // Re-export shared utilities (used by both old and new implementations)
 export {
-  loadHeartbeatConfig,
   getDefaultConfig,
   type HeartbeatConfig,
+  loadHeartbeatConfig,
 } from "./heartbeat/config";
-
 export {
-  loadState,
-  saveState,
-  generateAlertKey,
-  isAlertSuppressed,
-  suppressAlert,
-  cleanupExpiredSuppressions,
-  updateDefaultChannel,
-  getDefaultChannel,
-  registerBackgroundTask,
-  updateBackgroundTask,
-  getIncompleteTasks,
-  cleanupOldTasks,
-  recordRun,
-  type HeartbeatState,
-  type SuppressedAlert,
-  type DefaultChannel,
-  type PauseState,
-  type BackgroundTask,
-} from "./heartbeat/state";
-
-export {
-  pauseHeartbeat,
-  resumeHeartbeat,
+  formatPauseStatus,
   getPauseStatus,
   isPaused,
-  formatPauseStatus,
+  pauseHeartbeat,
+  resumeHeartbeat,
 } from "./heartbeat/pause";
+export {
+  type BackgroundTask,
+  cleanupExpiredSuppressions,
+  cleanupOldTasks,
+  type DefaultChannel,
+  generateAlertKey,
+  getDefaultChannel,
+  getIncompleteTasks,
+  type HeartbeatState,
+  isAlertSuppressed,
+  loadState,
+  type PauseState,
+  recordRun,
+  registerBackgroundTask,
+  type SuppressedAlert,
+  saveState,
+  suppressAlert,
+  updateBackgroundTask,
+  updateDefaultChannel,
+} from "./heartbeat/state";
 
 // Note: heartbeatWorkflow export removed - use HeartbeatService via gateway

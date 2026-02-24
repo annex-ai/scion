@@ -3,7 +3,6 @@
 
 import { afterAll, beforeEach, expect, test } from "bun:test";
 import {
-  type ProcessEntry,
   appendOutput,
   createProcess,
   generateProcessId,
@@ -11,6 +10,7 @@ import {
   getProcess,
   killProcess,
   listProcesses,
+  type ProcessEntry,
   pollOutput,
   removeProcess,
   validateSignal,

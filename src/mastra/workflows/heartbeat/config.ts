@@ -9,7 +9,7 @@
  */
 
 import { z } from "zod";
-import { type HeartbeatSection, getHeartbeatConfig, getServicesConfig } from "../../lib/config";
+import { getHeartbeatConfig, getServicesConfig, type HeartbeatSection } from "../../lib/config";
 
 // ============================================================================
 // Schemas

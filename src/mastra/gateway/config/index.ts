@@ -3,10 +3,10 @@
 
 export { loadConfig, validateConfig } from "./loader";
 export {
-  gatewayConfigSchema,
+  type FlowsConfig,
   type GatewayConfig,
+  gatewayConfigSchema,
+  type PersonalityConfig,
   type SlackConfig,
   type TelegramConfig,
-  type PersonalityConfig,
-  type FlowsConfig,
 } from "./schema";

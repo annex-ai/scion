@@ -20,10 +20,10 @@ import { type HeartbeatConfig, loadHeartbeatConfig } from "../../workflows/heart
 import { heartbeatLogger } from "../../workflows/heartbeat/logger";
 import { isPaused } from "../../workflows/heartbeat/pause";
 import {
-  type HeartbeatState,
   cleanupExpiredSuppressions,
   generateAlertKey,
   getIncompleteTasks,
+  type HeartbeatState,
   isAlertSuppressed,
   loadState,
   recordRun,

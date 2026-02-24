@@ -12,12 +12,12 @@
  */
 import { beforeEach, expect, test } from "bun:test";
 import {
-  type ProcessEntry,
   appendOutput,
   createProcess,
   generateProcessId,
   getProcess,
   listProcesses,
+  type ProcessEntry,
   pollOutput,
   removeProcess,
 } from "../process-registry";

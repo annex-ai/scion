@@ -9,7 +9,7 @@
 
 import { createTool } from "@mastra/core/tools";
 import { z } from "zod";
-import { type ParsedTask, fetchWorkingMemory, getMemoryParams, parseAllTasks } from "./task-helpers";
+import { fetchWorkingMemory, getMemoryParams, type ParsedTask, parseAllTasks } from "./task-helpers";
 
 const LOG_PREFIX = "[TaskList]";
 

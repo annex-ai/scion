@@ -137,18 +137,18 @@ export interface FlowLoaderConfig {
 // ============================================================================
 
 export type {
+  CompilationError,
+  FlowAst,
+  FlowEdge,
   // AST Types
   FlowNode,
   FlowNodeKind,
-  FlowEdge,
-  FlowAst,
-  CompilationError,
   ValidationResult,
 } from "./compiler/ast-types";
 
 export type {
   CompileOptions,
-  RetryConfig,
-  OnFinishParams,
   OnErrorParams,
+  OnFinishParams,
+  RetryConfig,
 } from "./compiler/workflow-compiler";

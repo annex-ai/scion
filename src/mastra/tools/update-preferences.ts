@@ -12,9 +12,9 @@ import { createTool } from "@mastra/core/tools";
 import { z } from "zod";
 
 import {
+  mergePreferences,
   type UserPreferences,
   UserPreferencesSchema,
-  mergePreferences,
   validatePreferences,
 } from "../memory/user-preferences";
 

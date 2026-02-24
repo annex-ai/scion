@@ -13,102 +13,94 @@ import type {
   WhatsAppChannelConfig,
 } from "./types";
 
-export {
-  createThreadKey,
-  toMastraCoreMessage,
-  SUPPORTED_CHANNELS,
-  type InboundMessage,
-  type InboundAttachment,
-  type OutboundMessage,
-  type OutboundAttachment,
-  type ChannelAdapter,
-  type ChannelConfig,
-  type ChannelType,
-  type ChannelMeta,
-  type SlackChannelConfig,
-  type TelegramChannelConfig,
-  type DiscordChannelConfig,
-  type WhatsAppChannelConfig,
-  type GoogleChatChannelConfig,
-  type SignalChannelConfig,
-  type IMessageChannelConfig,
-} from "./types";
-
-// Media utilities
-export {
-  detectMime,
-  getMediaKind,
-  getFileExtension,
-  getExtensionForMime,
-  isVoiceCompatibleAudio,
-  saveMediaBuffer,
-  downloadAndSaveMedia,
-  readMediaFile,
-  deleteMediaFile,
-  parseMediaFromOutput,
-  buildMediaNote,
-  type SavedMedia,
-  type ParsedMediaOutput,
-} from "./media";
-
-// Slack adapter
-export { SlackAdapter } from "./slack";
-export {
-  toInboundMessage as toSlackInboundMessage,
-  toSlackFormat,
-  fromSlackFormat,
-  chunkForSlack,
-} from "./slack/format";
-
-// Telegram adapter
-export { TelegramAdapter } from "./telegram";
-export {
-  toInboundMessage as toTelegramInboundMessage,
-  toTelegramFormat,
-  fromTelegramFormat,
-  chunkForTelegram,
-} from "./telegram/format";
-
 // Discord adapter
 export { DiscordAdapter } from "./discord";
 export {
-  toInboundMessage as toDiscordInboundMessage,
-  toDiscordFormat,
-  fromDiscordFormat,
   chunkForDiscord,
+  fromDiscordFormat,
+  toDiscordFormat,
+  toInboundMessage as toDiscordInboundMessage,
 } from "./discord/format";
-
-// WhatsApp adapter
-export { WhatsAppAdapter } from "./whatsapp";
-export {
-  toInboundMessage as toWhatsAppInboundMessage,
-  toWhatsAppFormat,
-  chunkForWhatsApp,
-} from "./whatsapp/format";
-
 // Google Chat adapter
 export { GoogleChatAdapter } from "./googlechat";
 export {
-  toInboundMessage as toGoogleChatInboundMessage,
-  toGoogleChatFormat,
   chunkForGoogleChat,
+  toGoogleChatFormat,
+  toInboundMessage as toGoogleChatInboundMessage,
 } from "./googlechat/format";
-
-// Signal adapter
-export { SignalAdapter } from "./signal";
-export {
-  toInboundMessage as toSignalInboundMessage,
-  toSignalFormat,
-  chunkForSignal,
-} from "./signal/format";
-
 // iMessage adapter
 export { IMessageAdapter } from "./imessage";
 export {
-  toInboundMessage as toIMessageInboundMessage,
-  toIMessageFormat,
   chunkForIMessage,
+  toIMessageFormat,
+  toInboundMessage as toIMessageInboundMessage,
 } from "./imessage/format";
+// Media utilities
+export {
+  buildMediaNote,
+  deleteMediaFile,
+  detectMime,
+  downloadAndSaveMedia,
+  getExtensionForMime,
+  getFileExtension,
+  getMediaKind,
+  isVoiceCompatibleAudio,
+  type ParsedMediaOutput,
+  parseMediaFromOutput,
+  readMediaFile,
+  type SavedMedia,
+  saveMediaBuffer,
+} from "./media";
+// Signal adapter
+export { SignalAdapter } from "./signal";
+export {
+  chunkForSignal,
+  toInboundMessage as toSignalInboundMessage,
+  toSignalFormat,
+} from "./signal/format";
+// Slack adapter
+export { SlackAdapter } from "./slack";
+export {
+  chunkForSlack,
+  fromSlackFormat,
+  toInboundMessage as toSlackInboundMessage,
+  toSlackFormat,
+} from "./slack/format";
+// Telegram adapter
+export { TelegramAdapter } from "./telegram";
+export {
+  chunkForTelegram,
+  fromTelegramFormat,
+  toInboundMessage as toTelegramInboundMessage,
+  toTelegramFormat,
+} from "./telegram/format";
+export {
+  type ChannelAdapter,
+  type ChannelConfig,
+  type ChannelMeta,
+  type ChannelType,
+  createThreadKey,
+  type DiscordChannelConfig,
+  type GoogleChatChannelConfig,
+  type IMessageChannelConfig,
+  type InboundAttachment,
+  type InboundMessage,
+  type OutboundAttachment,
+  type OutboundMessage,
+  type SignalChannelConfig,
+  type SlackChannelConfig,
+  SUPPORTED_CHANNELS,
+  type TelegramChannelConfig,
+  toMastraCoreMessage,
+  type WhatsAppChannelConfig,
+} from "./types";
+// WhatsApp adapter
+export { WhatsAppAdapter } from "./whatsapp";
+export {
+  chunkForWhatsApp,
+  toInboundMessage as toWhatsAppInboundMessage,
+  toWhatsAppFormat,
+} from "./whatsapp/format";
 
 /**
  * Union type for all channel configs

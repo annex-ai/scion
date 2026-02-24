@@ -143,7 +143,7 @@ function parseNode(id: string, shape: string, raw: string): FlowNode {
  */
 function extractNodeId(raw: string): string {
   // Match ID followed by shape syntax
-  const match = raw.match(/^([^(\[{]+)(?:\(\[[^\]]*\]\)|\[[^\]]*\]|\{[^}]*\}|\([^)]*\))?$/);
+  const match = raw.match(/^([^([{]+)(?:\(\[[^\]]*\]\)|\[[^\]]*\]|\{[^}]*\}|\([^)]*\))?$/);
   if (match) {
     return match[1].trim();
   }

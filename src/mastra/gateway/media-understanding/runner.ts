@@ -15,7 +15,7 @@ import { MediaAttachmentCache, normalizeAttachments, selectAttachments } from ".
 import type { MediaContext } from "./context.js";
 import { applyTemplate } from "./context.js";
 import { CLI_OUTPUT_MAX_BUFFER, DEFAULT_AUDIO_MODELS, DEFAULT_TIMEOUT_SECONDS } from "./defaults.js";
-import { MediaUnderstandingSkipError, isMediaUnderstandingSkipError } from "./errors.js";
+import { isMediaUnderstandingSkipError, MediaUnderstandingSkipError } from "./errors.js";
 import {
   buildMediaUnderstandingRegistry,
   getMediaUnderstandingProvider,

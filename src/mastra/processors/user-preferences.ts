@@ -20,9 +20,9 @@ import { AGENT_DIR } from "../lib/config";
 
 import {
   DEFAULT_PREFERENCES,
-  type UserPreferences,
   formatPreferencesContext,
   mergePreferences,
+  type UserPreferences,
   validatePreferences,
 } from "../memory/user-preferences";
 

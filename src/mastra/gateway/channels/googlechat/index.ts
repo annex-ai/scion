@@ -3,8 +3,8 @@
 
 export { GoogleChatAdapter } from "./adapter";
 export {
-  toInboundMessage,
-  toGoogleChatFormat,
   chunkForGoogleChat,
   type GoogleChatMessageEvent,
+  toGoogleChatFormat,
+  toInboundMessage,
 } from "./format";

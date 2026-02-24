@@ -57,7 +57,7 @@ export function registerAgentsCommands(program: Command): void {
           { id: "interactiveAgent", name: "Interactive Agent" },
           { id: "taskAgent", name: "Task Agent" },
           { id: "reflectorAgent", name: "Reflector Agent" },
-          { id: "compactionAgent", name: "Compaction Agent" },
+          // REMOVED: compactionAgent - replaced by Observational Memory
         ];
 
         if (opts.json) {

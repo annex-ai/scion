@@ -16,11 +16,11 @@ import { createTool } from "@mastra/core/tools";
 import { z } from "zod";
 
 import {
-  type InteractionMetadata,
   calculateDuration,
   formatInteractionDate,
   formatMessagesAsMarkdown,
   generateInteractionFilename,
+  type InteractionMetadata,
   slugify,
 } from "../lib/utils/interaction-formatter";
 
@@ -95,7 +95,7 @@ The saved interaction file can be referenced later for context.`,
     const timestamp = Date.now();
     const slug = input.customSlug ? slugify(input.customSlug) : `session-${timestamp}`;
 
-    let savedInteraction = undefined;
+    let savedInteraction;
 
     if (input.saveInteraction) {
       try {

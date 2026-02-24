@@ -186,7 +186,7 @@ function parseKimiOutput(stdout: string, stderr: string, executionId: string): K
     }
 
     // Look for arrow options: -->|Option|
-    const arrowOptions = output.matchAll(/\-\-\>\|([^|]+)\|/g);
+    const arrowOptions = output.matchAll(/-->\|([^|]+)\|/g);
     for (const match of arrowOptions) {
       const label = match[1].trim();
       options.push({ value: label.toLowerCase(), label });

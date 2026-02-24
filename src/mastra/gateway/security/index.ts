@@ -7,5 +7,5 @@
  * IP-based access control for incoming gateway requests.
  */
 
-export { GatewaySecurityValidator, type GatewaySecurityConfig } from "./validator";
 export { extractClientIp } from "./ip-extractor";
+export { type GatewaySecurityConfig, GatewaySecurityValidator } from "./validator";

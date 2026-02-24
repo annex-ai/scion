@@ -15,11 +15,11 @@ import { createStep, createWorkflow } from "@mastra/core/workflows";
 import { z } from "zod";
 
 import {
-  type InteractionMetadata,
   calculateDuration,
   formatInteractionDate,
   formatMessagesAsMarkdown,
   generateInteractionFilename,
+  type InteractionMetadata,
   slugify,
 } from "../lib/utils/interaction-formatter";
 

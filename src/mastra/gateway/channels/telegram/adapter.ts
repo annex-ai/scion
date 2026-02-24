@@ -6,8 +6,14 @@
  */
 
 import { Bot, type Context, InputFile } from "grammy";
-import { downloadAndSaveMedia, readMediaFile, saveMediaBuffer } from "../media";
-import { detectMime, getMediaKind, isVoiceCompatibleAudio } from "../media";
+import {
+  detectMime,
+  downloadAndSaveMedia,
+  getMediaKind,
+  isVoiceCompatibleAudio,
+  readMediaFile,
+  saveMediaBuffer,
+} from "../media";
 import type {
   ChannelAdapter,
   InboundAttachment,
@@ -16,7 +22,7 @@ import type {
   OutboundMessage,
   TelegramChannelConfig,
 } from "../types";
-import { type TelegramMessageEvent, chunkForTelegram, toInboundMessage, toTelegramFormat } from "./format";
+import { chunkForTelegram, type TelegramMessageEvent, toInboundMessage, toTelegramFormat } from "./format";
 
 /**
  * Telegram channel adapter

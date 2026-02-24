@@ -14,6 +14,7 @@ import {
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { EdgeTTS } from "node-edge-tts";
+
 /** Payload flowing through the reply pipeline. */
 type ReplyPayload = {
   text?: string;
@@ -25,6 +26,7 @@ type ReplyPayload = {
   mime?: string;
   [key: string]: unknown;
 };
+
 import type { ScionConfig } from "../../config/config.js";
 import type { TtsAutoMode, TtsConfig, TtsMode, TtsModelOverrideConfig, TtsProvider } from "../../config/types.tts.js";
 import { logVerbose } from "../../globals.js";

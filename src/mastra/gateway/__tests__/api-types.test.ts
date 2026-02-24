@@ -2,7 +2,7 @@
 // Copyright (C) 2025-2026 Sacha Nelson
 
 import { describe, expect, test } from "bun:test";
-import { SendMessageSchema, apiError } from "../api/types";
+import { apiError, SendMessageSchema } from "../api/types";
 
 describe("apiError", () => {
   test("returns a Response with error JSON", async () => {

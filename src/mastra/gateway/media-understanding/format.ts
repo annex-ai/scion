@@ -27,10 +27,7 @@ function formatSection(title: string, kind: "Transcript" | "Description", text: 
   return lines.join("\n");
 }
 
-export function formatMediaUnderstandingBody(params: {
-  body?: string;
-  outputs: MediaUnderstandingOutput[];
-}): string {
+export function formatMediaUnderstandingBody(params: { body?: string; outputs: MediaUnderstandingOutput[] }): string {
   const outputs = params.outputs.filter((output) => output.text.trim());
   if (outputs.length === 0) {
     return params.body ?? "";

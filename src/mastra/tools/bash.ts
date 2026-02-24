@@ -8,7 +8,7 @@ import os from "node:os";
 import { join } from "node:path";
 import { createTool } from "@mastra/core/tools";
 import { z } from "zod";
-import { type ProcessEntry, appendOutput, createProcess, generateProcessId, loadNodePty } from "./process-registry";
+import { appendOutput, createProcess, generateProcessId, loadNodePty, type ProcessEntry } from "./process-registry";
 
 // Truncation constants
 const DEFAULT_MAX_LINES = 100000; // Effectively no truncation for most use cases
