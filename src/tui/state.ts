@@ -29,6 +29,18 @@ export interface PendingToolApproval {
   args: Record<string, unknown>;
 }
 
+export interface PendingQuestion {
+  questionId: string;
+  question: string;
+  options?: string[];
+}
+
+export interface PendingPlanApproval {
+  planId: string;
+  plan: string;
+  summary?: string;
+}
+
 export interface TUIState {
   // Connection
   connected: boolean;
@@ -53,6 +65,12 @@ export interface TUIState {
   // Tool Approval
   pendingApproval: PendingToolApproval | null;
 
+  // Question from agent (ask_user built-in tool)
+  pendingQuestion: PendingQuestion | null;
+
+  // Plan approval (submit_plan built-in tool)
+  pendingPlan: PendingPlanApproval | null;
+
   // UI
   showHelp: boolean;
 }
@@ -70,6 +88,8 @@ export function createInitialState(): TUIState {
     currentThreadId: null,
     omStatus: { state: "idle" },
     pendingApproval: null,
+    pendingQuestion: null,
+    pendingPlan: null,
     showHelp: false,
   };
 }

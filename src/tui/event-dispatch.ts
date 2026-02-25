@@ -7,28 +7,59 @@
  * Maps Harness events to TUI state updates.
  */
 
-import type { StateManager, Message, PendingToolApproval } from "./state";
+import type { StateManager } from "./state";
 
 /**
- * Harness event types (from harness-manager)
+ * Harness event types (from Mastra Harness documentation)
  */
 export type HarnessEventType =
+  // Lifecycle
   | "agent_start"
   | "agent_end"
+  // Messages
   | "message_start"
   | "message_update"
   | "message_end"
+  // Tools
   | "tool_start"
+  | "tool_update"
   | "tool_end"
   | "tool_approval_required"
+  | "tool_input_start"
+  | "tool_input_delta"
+  | "tool_input_end"
+  // Built-in tools
+  | "ask_question"
+  | "plan_approval_required"
+  | "plan_approved"
+  | "task_updated"
+  // Observational Memory
   | "om_status"
   | "om_observation_start"
   | "om_observation_end"
   | "om_reflection_start"
   | "om_reflection_end"
+  // State & Config
   | "mode_changed"
   | "model_changed"
   | "state_changed"
+  | "thread_changed"
+  | "thread_created"
+  // Workspace
+  | "workspace_status_changed"
+  | "workspace_ready"
+  | "workspace_error"
+  // Subagents
+  | "subagent_start"
+  | "subagent_text_delta"
+  | "subagent_tool_start"
+  | "subagent_tool_end"
+  | "subagent_end"
+  | "subagent_model_changed"
+  // Other
+  | "usage_update"
+  | "info"
+  | "follow_up_queued"
   | "error";
 
 export interface HarnessEvent {
@@ -187,12 +218,79 @@ export function createEventDispatcher(stateManager: StateManager) {
         }
         break;
 
+      case "thread_changed":
+        stateManager.setState({ currentThreadId: event.threadId });
+        // Clear messages when switching threads
+        stateManager.clearMessages();
+        break;
+
+      case "thread_created":
+        stateManager.setState({ currentThreadId: event.thread?.id });
+        break;
+
+      case "ask_question":
+        // Agent is asking the user a question via ask_user built-in tool
+        stateManager.setState({
+          pendingQuestion: {
+            questionId: event.questionId,
+            question: event.question,
+            options: event.options,
+          },
+        });
+        break;
+
+      case "plan_approval_required":
+        // Agent submitted a plan for approval via submit_plan built-in tool
+        stateManager.setState({
+          pendingPlan: {
+            planId: event.planId,
+            plan: event.plan,
+            summary: event.summary,
+          },
+        });
+        break;
+
+      case "plan_approved":
+        // Plan was approved, clear pending plan
+        stateManager.setState({ pendingPlan: null });
+        break;
+
+      case "task_updated":
+        // Task list was updated - could display in status line
+        // For now, just log it
+        console.log("[tui] Task updated:", event.tasks);
+        break;
+
+      case "info":
+        // Informational message - could display as system message
+        if (event.message) {
+          stateManager.addMessage({
+            id: crypto.randomUUID(),
+            role: "system",
+            content: event.message,
+            timestamp: new Date(),
+          });
+        }
+        break;
+
+      case "follow_up_queued":
+        // Follow-up message was queued - could show indicator
+        console.log("[tui] Follow-up queued:", event.content);
+        break;
+
       case "error":
         stateManager.setState({
           isProcessing: false,
           error: event.error?.message || "An error occurred",
         });
         break;
+
+      // Handle other events silently for now
+      default:
+        // Log unhandled events in development
+        if (process.env.NODE_ENV === "development") {
+          console.log(`[tui] Unhandled event: ${event.type}`);
+        }
     }
   };
 }

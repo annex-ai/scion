@@ -64,10 +64,31 @@ const UpdateStateSchema = z.object({
 
 /**
  * Schema for tool approval response
+ * Note: Use grantSessionCategory/grantSessionTool for "always allow" behavior
  */
 const ToolApprovalSchema = z.object({
-  decision: z.enum(["approve", "decline", "always_allow_category"]),
-  threadId: z.string(),
+  decision: z.enum(["approve", "decline"]),
+  threadId: z.string().optional(),
+  // Optional: grant session permission after approval
+  grantCategory: z.string().optional(),
+  grantTool: z.string().optional(),
+});
+
+/**
+ * Schema for question response (ask_user built-in tool)
+ */
+const QuestionResponseSchema = z.object({
+  questionId: z.string(),
+  answer: z.string(),
+});
+
+/**
+ * Schema for plan approval response (submit_plan built-in tool)
+ */
+const PlanApprovalSchema = z.object({
+  planId: z.string(),
+  action: z.enum(["approved", "rejected"]),
+  feedback: z.string().optional(),
 });
 
 /**
@@ -112,7 +133,6 @@ export function createHarnessRoutes() {
             currentModelId: harness.getCurrentModelId(),
             currentThreadId: harness.getCurrentThreadId(),
             resourceId: harness.getResourceId(),
-            tokenUsage: harness.getTokenUsage(),
             isRunning: harness.isRunning(),
           });
         };
@@ -170,15 +190,22 @@ export function createHarnessRoutes() {
 
           console.log(`[harness-routes] sendMessage: thread=${harnessThreadId}, contentLength=${content.length}`);
 
-          // Switch to the channel's thread
+          // Switch to the channel's thread or create if it doesn't exist
           const currentThreadId = harness.getCurrentThreadId();
           if (currentThreadId !== harnessThreadId) {
             try {
               await harness.switchThread({ threadId: harnessThreadId });
             } catch {
-              // Thread doesn't exist, create it
-              await harness.createThread({ title: `${channelType}/${channelId}` });
-              // The new thread will have a different ID, but switchThread should handle it
+              // Thread doesn't exist, create it with the channel info as title
+              // Note: Harness generates its own thread ID, but we use the title
+              // to track the channel association
+              const newThread = await harness.createThread({
+                title: `${channelType}/${channelId}${threadId ? `/${threadId}` : ""}`,
+              });
+              console.log(
+                `[harness-routes] Created new thread: ${newThread.id} for channel ${channelType}/${channelId}`,
+              );
+              // The harness automatically switches to the newly created thread
             }
           }
 
@@ -388,6 +415,17 @@ export function createHarnessRoutes() {
             return apiError("VALIDATION_ERROR", "Invalid approval request", parsed.error.flatten());
           }
 
+          // Grant session permissions if requested
+          if (parsed.data.grantCategory) {
+            harness.grantSessionCategory({
+              category: parsed.data.grantCategory as "read" | "edit" | "execute" | "mcp" | "other",
+            });
+          }
+          if (parsed.data.grantTool) {
+            harness.grantSessionTool({ toolName: parsed.data.grantTool });
+          }
+
+          // Respond to the approval
           harness.respondToToolApproval({ decision: parsed.data.decision });
           return Response.json({ success: true });
         };
@@ -597,6 +635,234 @@ export function createHarnessRoutes() {
 
           await harness.steer({ content });
           return Response.json({ success: true });
+        };
+      },
+    },
+    {
+      path: "/_harness/followUp",
+      method: "POST" as const,
+      createHandler: async () => {
+        return async (c: any) => {
+          const harness = await getHarness();
+
+          let body: unknown;
+          try {
+            body = await c.req.json();
+          } catch {
+            return apiError("INVALID_JSON", "Request body must be valid JSON");
+          }
+
+          const { content } = body as { content?: string };
+          if (!content) {
+            return apiError("VALIDATION_ERROR", "content is required");
+          }
+
+          harness.followUp({ content });
+          return Response.json({ success: true });
+        };
+      },
+    },
+
+    // ====================================================================
+    // Built-in Tool Responses
+    // ====================================================================
+    {
+      path: "/_harness/respondToQuestion",
+      method: "POST" as const,
+      createHandler: async () => {
+        return async (c: any) => {
+          const harness = await getHarness();
+
+          let body: unknown;
+          try {
+            body = await c.req.json();
+          } catch {
+            return apiError("INVALID_JSON", "Request body must be valid JSON");
+          }
+
+          const parsed = QuestionResponseSchema.safeParse(body);
+          if (!parsed.success) {
+            return apiError("VALIDATION_ERROR", "Invalid question response", parsed.error.flatten());
+          }
+
+          harness.respondToQuestion({
+            questionId: parsed.data.questionId,
+            answer: parsed.data.answer,
+          });
+          return Response.json({ success: true });
+        };
+      },
+    },
+    {
+      path: "/_harness/respondToPlanApproval",
+      method: "POST" as const,
+      createHandler: async () => {
+        return async (c: any) => {
+          const harness = await getHarness();
+
+          let body: unknown;
+          try {
+            body = await c.req.json();
+          } catch {
+            return apiError("INVALID_JSON", "Request body must be valid JSON");
+          }
+
+          const parsed = PlanApprovalSchema.safeParse(body);
+          if (!parsed.success) {
+            return apiError("VALIDATION_ERROR", "Invalid plan approval", parsed.error.flatten());
+          }
+
+          harness.respondToPlanApproval({
+            planId: parsed.data.planId,
+            response: {
+              action: parsed.data.action,
+              feedback: parsed.data.feedback,
+            },
+          });
+          return Response.json({ success: true });
+        };
+      },
+    },
+
+    // ====================================================================
+    // Permission Management
+    // ====================================================================
+    {
+      path: "/_harness/permissions",
+      method: "GET" as const,
+      createHandler: async () => {
+        return async () => {
+          const harness = await getHarness();
+          const rules = harness.getPermissionRules();
+          const grants = harness.getSessionGrants();
+          return Response.json({
+            rules,
+            sessionGrants: {
+              categories: Array.from(grants.categories),
+              tools: Array.from(grants.tools),
+            },
+          });
+        };
+      },
+    },
+    {
+      path: "/_harness/permissions/grantCategory",
+      method: "POST" as const,
+      createHandler: async () => {
+        return async (c: any) => {
+          const harness = await getHarness();
+
+          let body: unknown;
+          try {
+            body = await c.req.json();
+          } catch {
+            return apiError("INVALID_JSON", "Request body must be valid JSON");
+          }
+
+          const { category } = body as { category?: string };
+          if (!category) {
+            return apiError("VALIDATION_ERROR", "category is required");
+          }
+
+          harness.grantSessionCategory({
+            category: category as "read" | "edit" | "execute" | "mcp" | "other",
+          });
+          return Response.json({ success: true });
+        };
+      },
+    },
+    {
+      path: "/_harness/permissions/grantTool",
+      method: "POST" as const,
+      createHandler: async () => {
+        return async (c: any) => {
+          const harness = await getHarness();
+
+          let body: unknown;
+          try {
+            body = await c.req.json();
+          } catch {
+            return apiError("INVALID_JSON", "Request body must be valid JSON");
+          }
+
+          const { toolName } = body as { toolName?: string };
+          if (!toolName) {
+            return apiError("VALIDATION_ERROR", "toolName is required");
+          }
+
+          harness.grantSessionTool({ toolName });
+          return Response.json({ success: true });
+        };
+      },
+    },
+
+    // ====================================================================
+    // Observational Memory
+    // ====================================================================
+    {
+      path: "/_harness/om/status",
+      method: "GET" as const,
+      createHandler: async () => {
+        return async () => {
+          const harness = await getHarness();
+          return Response.json({
+            observerModelId: harness.getObserverModelId(),
+            reflectorModelId: harness.getReflectorModelId(),
+            observationThreshold: harness.getObservationThreshold(),
+            reflectionThreshold: harness.getReflectionThreshold(),
+          });
+        };
+      },
+    },
+    {
+      path: "/_harness/om/switchObserverModel",
+      method: "POST" as const,
+      createHandler: async () => {
+        return async (c: any) => {
+          const harness = await getHarness();
+
+          let body: unknown;
+          try {
+            body = await c.req.json();
+          } catch {
+            return apiError("INVALID_JSON", "Request body must be valid JSON");
+          }
+
+          const { modelId } = body as { modelId?: string };
+          if (!modelId) {
+            return apiError("VALIDATION_ERROR", "modelId is required");
+          }
+
+          await harness.switchObserverModel({ modelId });
+          return Response.json({
+            observerModelId: harness.getObserverModelId(),
+          });
+        };
+      },
+    },
+    {
+      path: "/_harness/om/switchReflectorModel",
+      method: "POST" as const,
+      createHandler: async () => {
+        return async (c: any) => {
+          const harness = await getHarness();
+
+          let body: unknown;
+          try {
+            body = await c.req.json();
+          } catch {
+            return apiError("INVALID_JSON", "Request body must be valid JSON");
+          }
+
+          const { modelId } = body as { modelId?: string };
+          if (!modelId) {
+            return apiError("VALIDATION_ERROR", "modelId is required");
+          }
+
+          await harness.switchReflectorModel({ modelId });
+          return Response.json({
+            reflectorModelId: harness.getReflectorModelId(),
+          });
         };
       },
     },
