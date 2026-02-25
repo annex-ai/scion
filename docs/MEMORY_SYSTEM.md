@@ -21,7 +21,7 @@ This document provides comprehensive documentation of the adapted memory system 
 
 The memory system is built on top of Mastra's Memory primitive, extended with custom processors and the Soul System. It provides:
 
-- **Three-layer memory architecture** for different temporal contexts
+- **Four-layer memory architecture** for different temporal contexts
 - **Multi-scope isolation** (thread vs. resource)
 - **Personality persistence** via Soul configuration files
 - **Learned user preferences** that persist across all conversations
@@ -71,6 +71,14 @@ The memory system is built on top of Mastra's Memory primitive, extended with cu
 │  │  │ ├─ TopK: 3 most relevant messages                        │   │    │
 │  │  │ ├─ MessageRange: 2 surrounding messages                  │   │    │
 │  │  │ └─ Searches ALL conversations for this user              │   │    │
+│  │  └──────────────────────────────────────────────────────────┘   │    │
+│  │                                                                  │    │
+│  │  ┌──────────────────────────────────────────────────────────┐   │    │
+│  │  │ Layer 4: Observational Memory (scope: "resource")        │   │    │
+│  │  │ ├─ Automatic observation at token threshold (50k)        │   │    │
+│  │  │ ├─ Reflection pass at observation threshold (60k)        │   │    │
+│  │  │ ├─ Resource-scoped: spans all threads for the user       │   │    │
+│  │  │ └─ Model: configured via om_model in agent.toml         │   │    │
 │  │  └──────────────────────────────────────────────────────────┘   │    │
 │  └─────────────────────────────────────────────────────────────────┘    │
 │                                                                          │
@@ -205,6 +213,38 @@ options: {
 - Recalling previous project discussions
 - Cross-conversation context ("as we discussed before...")
 
+### Layer 4: Observational Memory (Resource-Scoped)
+
+Automatic long-context memory management that replaces manual compaction. OM runs two passes — observation (extracts key facts, decisions, and patterns) and reflection (synthesizes observations into durable memory) — triggered by token thresholds.
+
+```toml
+# agent.toml [memory] section
+om_mode = "static"                # agent-level memory (works everywhere)
+om_model = "google/gemini-2.5-flash"
+om_scope = "resource"             # cross-thread (default for always-on agents)
+om_observation_threshold = 50000  # tokens before observation pass
+om_reflection_threshold = 60000   # tokens before reflection pass
+```
+
+**Characteristics:**
+- Resource-scoped by default — observations span all threads for the user
+- Triggered automatically when token thresholds are reached
+- Model IDs are plain strings resolved by Mastra's built-in model router
+- Two memory instances: `interactiveMemory` (OM enabled) and `sharedMemory` (OM disabled)
+
+**Scope choice:**
+- **Resource** (default): Best for always-on interactive agents receiving inputs from multiple channels across time horizons. Observations build a unified picture of the user.
+- **Thread**: Best when you need memory isolation between conversations. Each thread's observations are independent.
+
+**Mode choice (`om_mode`):**
+- **Static** (default): OM is set directly on the agent. Works everywhere — Studio, API, workflows, harness. Agent and harness share the same `interactiveMemory` instance.
+- **Dynamic**: OM is injected by the harness at runtime via a factory. Allows per-thread model switching but only works through the harness.
+
+**Use cases:**
+- Automatic context compression for long conversations
+- Cross-session learning without manual state management
+- Replacing compaction processors with zero-config memory management
+
 ---
 
 ## Memory Scopes
@@ -272,6 +312,11 @@ User A, All Conversations → Resource: user_a
 │  │    (Persists across all conversations)                 │ │ ← Resource
 │  └───────────────────────────────────────────────────────┘ │   Scoped
 │                                                             │
+│  ┌───────────────────────────────────────────────────────┐ │
+│  │           Observational Memory (OM)                    │ │
+│  │    (Observations + reflections across threads)         │ │ ← Resource
+│  └───────────────────────────────────────────────────────┘ │   Scoped
+│                                                             │
 └─────────────────────────────────────────────────────────────┘
 ```
 
@@ -300,7 +345,9 @@ The Soul System extends the memory architecture with personality and user contex
 │  ┌─────────────────────────────────────────────────┐   │
 │  │ Resource-Time Memory                            │   │
 │  │ ├─ User Preferences (learned over time)         │   │
-│  │ └─ Semantic Recall (cross-conversation)         │   │
+│  │ ├─ Semantic Recall (cross-conversation)         │   │
+│  │ └─ Observational Memory (OM observations +      │   │
+│  │    reflections across all threads)              │   │
 │  │                                                  │   │
 │  │ Persists per-user, evolves across sessions      │   │
 │  └─────────────────────────────────────────────────┘   │
@@ -586,17 +633,18 @@ Agent Generation
 
 ### Agent Memory Isolation
 
-Different agents use separate memory configurations:
+Different agents use separate Memory instances with different OM configurations:
 
-**Interactive Agent:**
-- Full memory (recent, working, semantic)
-- Shared storage instance
-- Resource-scoped semantic recall
+**Interactive Agent** (`interactiveMemory`):
+- Full memory (recent, semantic, OM)
+- Observational Memory enabled (resource-scoped)
+- Shared storage/vector backends
+- Works everywhere: Studio, API, workflows, harness
 
-**Task Agent:**
-- Minimal memory (recent only)
-- Separate storage instance (`task-agent-storage`)
-- No cross-session contamination
+**Task Agent** (`sharedMemory`):
+- Memory without OM overhead (recent + semantic only)
+- Same storage/vector backends
+- No Observational Memory (task agents don't need long-term learning)
 
 ---
 
@@ -675,25 +723,52 @@ database_url = "local.db"  # Relative to agent.toml, or absolute URL (libsql://)
 
 ### Memory Configuration
 
+Two Memory instances are exported from `memory.ts`:
+
 ```typescript
+// sharedMemory — used by task agent and tools (OM disabled)
 new Memory({
-  embedder: fastembed,       // Embedding provider
-  storage: LibSQLStore,      // Relational storage
-  vector: LibSQLVector,      // Vector storage
+  embedder: fastembed,
+  storage: LibSQLStore,
+  vector: LibSQLVector,
   options: {
-    lastMessages: 10,        // Recent message count
-    workingMemory: {
-      enabled: true,
-      scope: "thread",       // "thread" | "resource"
-    },
+    lastMessages: 30,
     semanticRecall: {
-      topK: 3,               // Results to return
-      messageRange: 2,       // Surrounding context
-      scope: "resource",     // "thread" | "resource"
+      topK: 5, messageRange: 2, scope: "resource",
+    },
+    observationalMemory: { enabled: false },
+  },
+});
+
+// interactiveMemory — used by interactive agent (OM enabled)
+new Memory({
+  embedder: fastembed,
+  storage: LibSQLStore,
+  vector: LibSQLVector,
+  options: {
+    lastMessages: 30,
+    semanticRecall: {
+      topK: 5, messageRange: 2, scope: "resource",
+    },
+    observationalMemory: {
+      enabled: true,
+      scope: "resource",
+      observation: {
+        model: "google/gemini-2.5-flash",
+        messageTokens: 50000,
+        modelSettings: { maxOutputTokens: 60000 },
+      },
+      reflection: {
+        model: "google/gemini-2.5-flash",
+        observationTokens: 60000,
+        modelSettings: { maxOutputTokens: 60000 },
+      },
     },
   },
 });
 ```
+
+All values are read from `agent.toml` `[memory]` section — no defaults in the schema.
 
 ### Soul Loader Configuration
 

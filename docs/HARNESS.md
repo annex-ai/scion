@@ -4,7 +4,7 @@ The Harness is an orchestration layer between the gateway and Mastra agents. It 
 
 - **Mode-based model selection** — Switch between different agent configurations
 - **Tool permission system** — YOLO mode, per-category, and per-tool approval policies
-- **Observational Memory (OM)** — Dynamic model resolution and threshold configuration
+- **Observational Memory (OM)** — Config-based OM with static (agent-level) or dynamic (runtime) modes
 - **Event streaming** — Real-time updates for tool approvals, message streaming, etc.
 
 ## Why Harness?
@@ -13,7 +13,7 @@ Previously, the gateway called agents directly via `/api/agents/interactiveAgent
 
 1. **Memory leaks** — MCP tools leaked memory when multiple Mastra instances were created
 2. **No centralized state** — Each request was independent, no shared state across channels
-3. **Limited control** — No way to configure OM models or tool permissions at runtime
+3. **Limited control** — No way to configure tool permissions or model switching at runtime
 
 The Harness solves these by providing a **singleton instance** that all gateway requests flow through.
 
@@ -34,10 +34,9 @@ The Harness solves these by providing a **singleton instance** that all gateway 
 │  │  └─────────────────┘  └─────────────────┘  └─────────────────────┘  │   │
 │  │                                                                       │   │
 │  │  ┌───────────────────────────────────────────────────────────────┐   │   │
-│  │  │              Dynamic Memory Factory                            │   │   │
-│  │  │  - Reads OM config from harness state                         │   │   │
-│  │  │  - Creates Memory instance per-request with requestContext    │   │   │
-│  │  │  - Caches Memory when config unchanged                        │   │   │
+│  │  │              Memory (om_mode based)                             │   │   │
+│  │  │  - static: uses interactiveMemory (same instance as agent)     │   │   │
+│  │  │  - dynamic: factory reads OM config from harness state         │   │   │
 │  │  └───────────────────────────────────────────────────────────────┘   │   │
 │  └─────────────────────────────────────────────────────────────────────┘   │
 │                                                                             │
@@ -95,26 +94,24 @@ Creates the harness with all configuration from `agent.toml`:
 
 ```typescript
 export async function createAgentHarness(config?: AgentHarnessConfig) {
-  // Load config from agent.toml
   const agentConfig = await loadAgentConfig();
   const memoryConfig = await getMemoryConfig();
 
-  // Create dynamic memory factory
-  const dynamicMemory = createDynamicMemory({
-    omModel: memoryConfig.om_model,
-    obsThreshold: memoryConfig.om_observation_threshold,
-    refThreshold: memoryConfig.om_reflection_threshold,
-    // ...
-  });
+  const omMode = memoryConfig.om_mode; // "static" | "dynamic"
 
-  // Create harness
+  // Static: same interactiveMemory instance as the agent (OM works everywhere)
+  // Dynamic: factory reads OM models from harness state (runtime switching)
+  const memory =
+    omMode === "dynamic"
+      ? createDynamicMemory({ /* ... */ })
+      : interactiveMemory;
+
   const harness = new Harness({
     id: "multi-channel-agent",
     storage,
-    memory: dynamicMemory,
+    memory,
     stateSchema,
     modes,
-    resolveModel,
     toolCategoryResolver,
   });
 
@@ -122,39 +119,36 @@ export async function createAgentHarness(config?: AgentHarnessConfig) {
 }
 ```
 
-### 3. Dynamic Memory Factory
+### 3. Memory Modes
 
-The harness uses a dynamic memory factory that reads OM config from harness state:
+The harness memory strategy is controlled by `om_mode` in `agent.toml`:
+
+#### Static Mode (default)
+
+The agent and harness share the same `interactiveMemory` instance with OM enabled. This means OM works everywhere — Mastra Studio, API routes, workflows, and harness calls.
 
 ```typescript
-function createDynamicMemory(defaults) {
-  return ({ requestContext }) => {
-    // Read current config from harness state
-    const state = getHarnessState(requestContext);
-
-    // Use state values, fallback to defaults
-    const obsThreshold = state?.observationThreshold ?? defaults.obsThreshold;
-    const refThreshold = state?.reflectionThreshold ?? defaults.refThreshold;
-
-    // Create memory with OM enabled
-    return new Memory({
-      options: {
-        observationalMemory: {
-          enabled: true,
-          observation: {
-            model: (ctx) => getObserverModel(ctx, defaults),
-            messageTokens: obsThreshold,
-          },
-          reflection: {
-            model: (ctx) => getReflectorModel(ctx, defaults),
-            observationTokens: refThreshold,
-          },
-        },
-      },
-    });
-  };
-}
+// memory.ts — shared by agent and harness in static mode
+export const interactiveMemory = new Memory({
+  storage, vector, embedder: fastembed,
+  options: {
+    observationalMemory: {
+      enabled: true,
+      scope: "resource", // cross-thread memory (default)
+      observation: { model: "google/gemini-2.5-flash", messageTokens: 50000 },
+      reflection: { model: "google/gemini-2.5-flash", observationTokens: 60000 },
+    },
+  },
+});
 ```
+
+Model IDs are plain strings (e.g. `"google/gemini-2.5-flash"`) — Mastra's built-in model router resolves all providers natively.
+
+#### Dynamic Mode
+
+Only used when `om_mode = "dynamic"`. A factory reads OM model IDs from harness state via `requestContext`, allowing runtime switching of observer/reflector models per thread. The agent has no memory of its own — the harness injects it.
+
+Use dynamic mode for coding-task use cases that need runtime model switching.
 
 ### 4. Harness State Schema
 
@@ -389,20 +383,31 @@ All harness defaults come from `agent.toml`:
 ```toml
 [models]
 default = "zai-coding-plan/glm-5"
-fast = "google/gemini-2.5-flash"
+fast = "zai-coding-plan/glm-4.5-air"
 
 [memory]
 last_messages = 30
 semantic_recall_top_k = 5
-semantic_recall_message_range = 10
+semantic_recall_message_range = 2
 semantic_recall_scope = "resource"
+# Observational Memory
+om_mode = "static"              # "static" (default) or "dynamic"
 om_model = "google/gemini-2.5-flash"
+om_scope = "resource"           # "resource" (cross-thread) or "thread" (isolated)
 om_observation_threshold = 50000
 om_reflection_threshold = 60000
 
 [security]
 resource_id = "interactive-agent"
 ```
+
+| Field | Description |
+|-------|-------------|
+| `om_mode` | `"static"`: agent-level OM (works everywhere). `"dynamic"`: harness-injected (runtime model switching). |
+| `om_model` | Model ID for observer and reflector. Mastra resolves natively — no custom provider wrappers needed. |
+| `om_scope` | `"resource"`: observations span all threads for the resource (default for always-on agents). `"thread"`: isolated per conversation. |
+| `om_observation_threshold` | Token count that triggers an observation pass (default: 50000). |
+| `om_reflection_threshold` | Token count that triggers a reflection pass (default: 60000). |
 
 ## Gateway Integration
 
@@ -458,32 +463,38 @@ The harness emits events for UI updates:
 
 ## Memory Architecture
 
-The harness uses a two-tier memory system:
+The system uses two Memory instances, both sharing the same storage/vector/embedder:
 
-1. **Shared Memory** (`memory.ts`) — Static Memory instance with OM disabled
-   - Used by tools and agents that don't have harness context
-   - Same storage backend as harness
+1. **Shared Memory** (`sharedMemory` in `memory.ts`) — OM disabled
+   - Used by the task agent and tools
+   - No Observational Memory overhead
 
-2. **Dynamic Memory** (harness) — Created per-request with OM enabled
-   - Reads OM config from harness state via `requestContext`
-   - Allows runtime switching of OM models and thresholds
-   - Caches Memory instance when config unchanged
+2. **Interactive Memory** (`interactiveMemory` in `memory.ts`) — OM enabled
+   - Set directly on the interactive agent (works in Studio, API, workflows)
+   - Also used by the harness in static mode (same instance = consistent state)
+   - Resource-scoped OM by default (observations span all threads)
 
 ```typescript
-// Shared memory (OM disabled)
+// memory.ts — two instances, shared backends
 export const sharedMemory = new Memory({
-  options: {
-    observationalMemory: { enabled: false },
-  },
+  storage, vector, embedder: fastembed,
+  options: { observationalMemory: { enabled: false } },
 });
 
-// Dynamic memory (OM enabled, created per-request)
-const dynamicMemory = createDynamicMemory({...});
-const harness = new Harness({
-  memory: dynamicMemory,
-  // ...
+export const interactiveMemory = new Memory({
+  storage, vector, embedder: fastembed,
+  options: {
+    observationalMemory: {
+      enabled: true,
+      scope: "resource",
+      observation: { model: "google/gemini-2.5-flash", messageTokens: 50000 },
+      reflection: { model: "google/gemini-2.5-flash", observationTokens: 60000 },
+    },
+  },
 });
 ```
+
+When `om_mode = "dynamic"`, the harness creates its own Memory factory instead of using `interactiveMemory`, and the agent has no memory set (harness injects it at runtime).
 
 ## Related Documentation
 
