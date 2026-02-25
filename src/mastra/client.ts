@@ -32,6 +32,7 @@ import { reflectionWorkflow } from "./legacy/reflection-workflow";
 import { reflectorAgent } from "./legacy/reflector";
 import { getGatewaySecurityConfig, getSecurityConfig, getServerConfig } from "./lib/config";
 import { storage } from "./storage";
+import { createHarnessRoutes } from "./harness-routes";
 import { adaptationMasterWorkflow } from "./workflows/adaptation-master";
 import { coachWorkflow } from "./workflows/coach-workflow";
 import { dynamicFlowRouterWorkflow } from "./workflows/dynamic-flow-router";
@@ -662,6 +663,11 @@ export const mastra = new Mastra({
           };
         },
       },
+
+      // ====================================================================
+      // Harness API — Orchestration layer for gateway communication
+      // ====================================================================
+      ...createHarnessRoutes(),
     ],
   },
   observability: new Observability({
