@@ -125,9 +125,11 @@ Three markdown files define the agent's personality, hot-reloaded on file change
 
 | Layer | Description |
 |-------|-------------|
-| **Recent messages** | Last N messages from the thread (configurable, default 10) |
+| **Recent messages** | Last N messages from the thread (configurable, default 30) |
 | **Semantic recall** | FastEmbed embeddings + LibSQL vector search (top-k, resource-scoped) |
-| **Working memory** | Structured state: goals, task queue, progress log, notes |
+| **Observational Memory** | Automatic long-context management — observation and reflection passes triggered by token thresholds, resource-scoped by default |
+
+Observational Memory is configured in `agent.toml` under `[memory]` and enabled by default on the interactive agent (`om_mode = "static"`). Resource-scoped OM spans all threads for the user, making it ideal for always-on agents receiving inputs across multiple channels.
 
 See [docs/MEMORY_SYSTEM.md](docs/MEMORY_SYSTEM.md) for architecture details.
 
@@ -151,7 +153,8 @@ See [docs/MEMORY_SYSTEM.md](docs/MEMORY_SYSTEM.md) for architecture details.
 |-------|------|
 | **Interactive** | Main conversational agent — handles user messages, tool use, skill dispatch |
 | **Task** | Subagent for bash execution, code analysis, research, planning |
-| **Reflector** | Metacognitive analysis — extracts attention signals, noise patterns, and insights from conversations |
+| **Reflector** | Pattern synthesis — matches observations to existing patterns, creates new patterns, flags contradictions (structured output) |
+| **Observer** | Extracts behavioral observations from conversation history for the adaptation pipeline |
 | **Message Analyzer** | Extracts action items, commitments, deadlines from conversations |
 
 ### Tools & MCP
@@ -314,8 +317,8 @@ Manages agent-derived schedules from `CRON.md`. The agent can create, update, an
 #### HeartbeatService
 Proactive notification pipeline that checks for incomplete tasks, blocked items, and background task issues. Runs on a configurable schedule (default: every 30 min during active hours 9am–9pm). Supports pause/resume and 24-hour deduplication.
 
-#### Reflection Workflow
-Mastra workflow that scans conversation history, calls the reflector agent (LLM) to extract patterns (with existing patterns as context), and incrementally merges results into `REFLECTIONS.md`. Triggered via HTTP API or as an agent tool.
+#### Adaptation Pipeline (Observe → Reflect → Coach)
+Mastra workflow pipeline: the observer agent extracts behavioral observations from conversations, the reflector agent synthesizes observations into patterns (reinforcements, new patterns, contradictions) using LLM-based structured output with heuristic fallback, and the coach generates actionable suggestions. Triggered via HTTP API or scheduled.
 
 See individual documentation for details:
 - [docs/CRON_SESSION_MANAGEMENT.md](docs/CRON_SESSION_MANAGEMENT.md)
