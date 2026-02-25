@@ -81,6 +81,13 @@ export class StatusLine implements Component {
         return statusColors.om.observing(" OM:observing ");
       case "reflecting":
         return statusColors.om.reflecting(" OM:reflecting ");
+      case "buffering":
+        return statusColors.om.buffering(" OM:buffering ");
+      case "active":
+        return statusColors.om.active(" OM:active ");
+      case "error":
+        return statusColors.om.error(" OM:error ");
+      case "idle":
       default:
         return "";
     }

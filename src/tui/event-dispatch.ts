@@ -210,6 +210,47 @@ export function createEventDispatcher(stateManager: StateManager) {
         });
         break;
 
+      case "om_observation_failed":
+        stateManager.setState({
+          omStatus: { state: "error", progress: `Observation failed: ${event.error || "unknown error"}` },
+        });
+        break;
+
+      case "om_reflection_failed":
+        stateManager.setState({
+          omStatus: { state: "error", progress: `Reflection failed: ${event.error || "unknown error"}` },
+        });
+        break;
+
+      case "om_buffering_start":
+        stateManager.setState({
+          omStatus: { state: "buffering", progress: "Buffering context..." },
+        });
+        break;
+
+      case "om_buffering_end":
+        stateManager.setState({
+          omStatus: { state: "idle" },
+        });
+        break;
+
+      case "om_buffering_failed":
+        stateManager.setState({
+          omStatus: { state: "error", progress: `Buffering failed: ${event.error || "unknown error"}` },
+        });
+        break;
+
+      case "om_model_changed":
+        // OM model was switched - could show in status
+        console.log(`[tui] OM model changed: ${event.modelType} → ${event.modelId}`);
+        break;
+
+      case "om_activation":
+        stateManager.setState({
+          omStatus: { state: "active", progress: "Observational Memory activated" },
+        });
+        break;
+
       case "mode_changed":
         stateManager.setState({ currentModeId: event.modeId });
         break;

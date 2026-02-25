@@ -18,7 +18,7 @@ export interface Message {
 }
 
 export interface OMStatus {
-  state: "idle" | "observing" | "reflecting";
+  state: "idle" | "observing" | "reflecting" | "buffering" | "active" | "error";
   progress?: string;
 }
 

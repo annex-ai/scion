@@ -257,7 +257,7 @@ export class AgentTUI {
         if (args.length === 0) {
           const modes = this.harness.listModes();
           const current = this.harness.getCurrentModeId();
-          const modeList = modes.map((m) => (m.id === current ? `> ${m.name}` : `  ${m.name}`)).join("\n");
+          const modeList = modes.map((m) => (m.id === current ? `> ${m.name || m.id}` : `  ${m.name || m.id}`)).join("\n");
           this.addSystemMessage(`Available modes:\n${modeList}`);
         } else {
           try {
