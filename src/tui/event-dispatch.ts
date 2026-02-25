@@ -37,8 +37,15 @@ export type HarnessEventType =
   | "om_status"
   | "om_observation_start"
   | "om_observation_end"
+  | "om_observation_failed"
   | "om_reflection_start"
   | "om_reflection_end"
+  | "om_reflection_failed"
+  | "om_model_changed"
+  | "om_buffering_start"
+  | "om_buffering_end"
+  | "om_buffering_failed"
+  | "om_activation"
   // State & Config
   | "mode_changed"
   | "model_changed"
@@ -56,6 +63,8 @@ export type HarnessEventType =
   | "subagent_tool_end"
   | "subagent_end"
   | "subagent_model_changed"
+  // Shell
+  | "shell_output"
   // Other
   | "usage_update"
   | "info"

@@ -3,7 +3,7 @@
 
 import { resolve } from "node:path";
 import { Agent } from "@mastra/core/agent";
-import { ModelRouterEmbeddingModel } from "@mastra/core/llm";
+// REMOVED: ModelRouterEmbeddingModel - not used after memory delegation to harness
 import {
   BatchPartsProcessor,
   PIIDetector,
@@ -13,8 +13,7 @@ import {
 } from "@mastra/core/processors";
 // REMOVED: TokenLimiterProcessor - compaction replaced by Observational Memory
 import { createAnswerRelevancyScorer, createToxicityScorer } from "@mastra/evals/scorers/prebuilt";
-import { fastembed } from "@mastra/fastembed";
-import { Memory } from "@mastra/memory";
+// REMOVED: fastembed, Memory - memory now delegated to harness for OM support
 import { loadFlows, toWorkflowsRecord } from "../flows";
 import { AGENT_DIR, getFlowsConfig, getLoopConfig, getMemoryConfig, loadAgentConfig } from "../lib/config";
 // REMOVED: getCompactionInstructions - replaced by Observational Memory
@@ -22,18 +21,24 @@ import { getHeartbeatInstructions } from "../lib/instructions/heartbeat";
 import { getPatternInstructions } from "../lib/loop-patterns";
 import { loadSoulFiles } from "../lib/parsers";
 import { mcpClient } from "../mcp_client";
-import { sharedMemory } from "../memory";
+// REMOVED: sharedMemory - memory now delegated to harness for OM support
 import { getAdaptationProcessor } from "../processors/adaptation-processor";
 import { AdversarialPatternDetector } from "../processors/adversarial-detector";
 import { SecretMaskProcessor } from "../processors/secret-mask-processor";
 import { SecretSanitizerProcessor } from "../processors/secret-sanitizer-processor";
 // REMOVED: TimeCompactionProcessor and TokenCompactionProcessor - replaced by Observational Memory
 import { getUserPreferencesProcessor } from "../processors/user-preferences";
-import { storage, vector } from "../storage";
+// REMOVED: storage, vector - memory now delegated to harness
 import { tools } from "../tools";
 import { dynamicFlowRouterWorkflow } from "../workflows/dynamic-flow-router";
 import { nativeFlowExecutionWorkflow } from "../workflows/native-flow-execution-workflow";
 import { workspace } from "../workspace";
+
+// Note: sharedMemory is NOT set on the agent directly. This is intentional.
+// The Harness propagates its OM-enabled dynamic memory to agents that don't have
+// their own memory. By omitting memory here, we allow the harness to provide
+// memory with Observational Memory enabled at runtime.
+// See: src/mastra/harness.ts createDynamicMemory()
 
 /**
  * Load and merge tools (MCP + local)
@@ -218,7 +223,7 @@ export const interactiveAgent = new Agent({
     ${heartbeatSection}
   `;
   },
-  memory: sharedMemory,
+  // memory: omitted - harness propagates OM-enabled dynamic memory
   workflows: {
     nativeFlowExecutionWorkflow,
     dynamicFlowRouterWorkflow,

@@ -19,6 +19,10 @@ export class StatusLine implements Component {
     this.state = state;
   }
 
+  invalidate(): void {
+    // No-op - invalidation handled by parent compositor
+  }
+
   render(width: number): string[] {
     if (!this.state) {
       return [truncateToWidth(" Initializing...", width)];

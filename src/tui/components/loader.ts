@@ -23,6 +23,10 @@ export class SimpleLoader implements Component {
     this.message = message;
   }
 
+  invalidate(): void {
+    // No-op - invalidation handled by parent compositor
+  }
+
   setMessage(message: string): void {
     this.message = message;
   }

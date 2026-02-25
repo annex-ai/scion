@@ -23,6 +23,10 @@ export class ToolApprovalDialog implements Component {
   private handlers: ToolApprovalHandlers | null = null;
   private selectedOption: number = 0;
 
+  invalidate(): void {
+    // No-op - invalidation handled by parent compositor
+  }
+
   setApproval(approval: PendingToolApproval | null, handlers: ToolApprovalHandlers | null): void {
     this.approval = approval;
     this.handlers = handlers;

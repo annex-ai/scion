@@ -14,7 +14,6 @@
 import { existsSync } from "node:fs";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
-import type { MastraDBMessage } from "@mastra/core/agent";
 import type { ProcessInputArgs, ProcessInputResult, Processor } from "@mastra/core/processors";
 import { AGENT_DIR } from "../lib/config";
 
@@ -161,9 +160,11 @@ export class UserPreferencesProcessor implements Processor<"user-preferences"> {
 
   /**
    * Process input messages, injecting preferences context
+   *
+   * Returns { messages, systemMessages } to properly add preferences as system context
    */
   async processInput(args: ProcessInputArgs): Promise<ProcessInputResult> {
-    const { messages, requestContext } = args;
+    const { messages, systemMessages, requestContext } = args;
 
     // Get resource ID from context
     const resourceId = (requestContext?.get as any)?.("resourceId") as string | undefined;
@@ -172,7 +173,7 @@ export class UserPreferencesProcessor implements Processor<"user-preferences"> {
       if (this.verbose) {
         console.log("[UserPreferences] No resourceId in context, skipping");
       }
-      return messages;
+      return { messages, systemMessages: systemMessages ?? [] };
     }
 
     // Load preferences
@@ -191,41 +192,22 @@ export class UserPreferencesProcessor implements Processor<"user-preferences"> {
 
     if (!hasCustomPrefs) {
       // No custom preferences set, don't inject context
-      return messages;
+      return { messages, systemMessages: systemMessages ?? [] };
     }
 
     // Build preferences context
     const prefsContext = formatPreferencesContext(preferences);
 
-    // Create preferences message using proper MastraDBMessage format
-    const prefsMessage: MastraDBMessage = {
-      id: `user-preferences-${Date.now()}`,
-      role: "system",
-      content: {
-        format: 2,
-        parts: [{ type: "text", text: prefsContext }],
-      },
-      createdAt: new Date(),
+    // Append preferences as a system message using CoreMessage format
+    const prefsSystemMessage = {
+      role: "system" as const,
+      content: prefsContext,
     };
 
-    // Inject after soul config but before user messages
-    // Find the last system message and insert after it
-    // Find the last system message index
-    let lastSystemIndex = -1;
-    for (let i = messages.length - 1; i >= 0; i--) {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      if ((messages[i] as any).role === "system") {
-        lastSystemIndex = i;
-        break;
-      }
-    }
-
-    if (lastSystemIndex >= 0) {
-      return [...messages.slice(0, lastSystemIndex + 1), prefsMessage, ...messages.slice(lastSystemIndex + 1)];
-    }
-
-    // No system messages, prepend
-    return [prefsMessage, ...messages];
+    return {
+      messages,
+      systemMessages: [...(systemMessages ?? []), prefsSystemMessage],
+    };
   }
 
   /**

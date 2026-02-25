@@ -10,7 +10,6 @@
  * Part of the Observe → Reflect → Coach adaptation pipeline.
  */
 
-import type { MastraDBMessage } from "@mastra/core/agent";
 import type { ProcessInputArgs, ProcessInputResult, Processor } from "@mastra/core/processors";
 import { claimMatchingSuggestion } from "../lib/adaptation-claim";
 import { ensureAdaptationDirs, loadActivePatterns } from "../lib/adaptation-storage";
@@ -77,15 +76,18 @@ export class AdaptationProcessor implements Processor<"adaptation"> {
 
   /**
    * Process input messages, injecting adaptation context
+   *
+   * Returns { messages, systemMessages } to properly add system-level context
+   * without modifying the user/assistant message flow.
    */
   async processInput(args: ProcessInputArgs): Promise<ProcessInputResult> {
-    const { messages } = args;
+    const { messages, systemMessages } = args;
 
     try {
       // Check if adaptation is enabled
       const config = await getAdaptationConfig();
       if (!config.enabled) {
-        return messages;
+        return { messages, systemMessages: systemMessages ?? [] };
       }
 
       ensureAdaptationDirs();
@@ -108,7 +110,7 @@ export class AdaptationProcessor implements Processor<"adaptation"> {
 
       // 3. Build system message if we have context to inject
       if (topPatterns.length === 0 && !coaching) {
-        return messages;
+        return { messages, systemMessages: systemMessages ?? [] };
       }
 
       const contextMessage = this.buildContextMessage(topPatterns, coaching);
@@ -119,32 +121,23 @@ export class AdaptationProcessor implements Processor<"adaptation"> {
         );
       }
 
-      // Create adaptation message using proper MastraDBMessage format
-      const adaptationMessage: MastraDBMessage = {
-        id: `adaptation-${Date.now()}`,
-        role: "system",
-        content: {
-          format: 2,
-          parts: [{ type: "text", text: contextMessage }],
-        },
-        createdAt: new Date(),
+      // Append adaptation context as a system message
+      // Using CoreMessage format for systemMessages (not MastraDBMessage)
+      const adaptationSystemMessage = {
+        role: "system" as const,
+        content: contextMessage,
       };
 
-      // Inject after other system messages but before user messages
-      const lastSystemIndex = this.findLastSystemMessageIndex(messages);
-
-      if (lastSystemIndex >= 0) {
-        return [...messages.slice(0, lastSystemIndex + 1), adaptationMessage, ...messages.slice(lastSystemIndex + 1)];
-      }
-
-      // No system messages, prepend
-      return [adaptationMessage, ...messages];
+      return {
+        messages,
+        systemMessages: [...(systemMessages ?? []), adaptationSystemMessage],
+      };
     } catch (error) {
       // Don't fail the request if adaptation processing fails
       if (this.verbose) {
         console.error("[AdaptationProcessor] Error:", error);
       }
-      return messages;
+      return { messages, systemMessages: systemMessages ?? [] };
     }
   }
 
@@ -208,18 +201,6 @@ export class AdaptationProcessor implements Processor<"adaptation"> {
     return null;
   }
 
-  /**
-   * Find the index of the last system message
-   */
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  private findLastSystemMessageIndex(messages: any[]): number {
-    for (let i = messages.length - 1; i >= 0; i--) {
-      if (messages[i].role === "system") {
-        return i;
-      }
-    }
-    return -1;
-  }
 }
 
 /**

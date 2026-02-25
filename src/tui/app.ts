@@ -43,7 +43,7 @@ interface Harness {
   createThread(options: { title?: string }): Promise<{ id: string }>;
   switchThread(options: { threadId: string }): Promise<void>;
   listThreads(): Promise<Array<{ id: string; title?: string }>>;
-  listModes(): Array<{ id: string; name: string }>;
+  listModes(): Array<{ id: string; name?: string }>;
   listAvailableModels(): Promise<Array<{ id: string; name?: string }>>;
   getCurrentModeId(): string;
   getCurrentModelId(): string;

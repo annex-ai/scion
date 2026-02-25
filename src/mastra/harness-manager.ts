@@ -16,7 +16,7 @@
  */
 
 import type { Harness } from "@mastra/core/harness";
-import type { HarnessState, stateSchema } from "./harness";
+import type { stateSchema } from "./harness";
 import { createAgentHarness } from "./harness";
 
 // Singleton harness instance
@@ -100,20 +100,22 @@ export function generateHarnessThreadId(
 /**
  * Event emitter for harness events (tool approval, streaming, etc.)
  * Subscribers are registered per-thread for targeted delivery
+ *
+ * Note: We wrap the Mastra HarnessEvent with our own envelope that includes
+ * the threadId for routing to the correct SSE subscribers.
  */
-type HarnessEventCallback = (event: HarnessEvent) => void;
+type HarnessEventCallback = (event: ThreadHarnessEvent) => void;
 
-export interface HarnessEvent {
-  type:
-    | "message_start"
-    | "message_chunk"
-    | "message_complete"
-    | "tool_approval_required"
-    | "tool_execution_start"
-    | "tool_execution_complete"
-    | "error"
-    | "state_changed";
+/**
+ * Thread-scoped harness event envelope.
+ * Wraps the raw Mastra HarnessEvent with routing info for SSE delivery.
+ */
+export interface ThreadHarnessEvent {
+  /** Event type from Mastra's HarnessEvent union */
+  type: string;
+  /** Thread ID for routing to SSE subscribers */
   threadId: string;
+  /** Full Mastra HarnessEvent data */
   data: unknown;
 }
 
@@ -143,7 +145,7 @@ export function subscribeToThread(
 /**
  * Emit an event to all subscribers of a thread
  */
-export function emitThreadEvent(event: HarnessEvent): void {
+export function emitThreadEvent(event: ThreadHarnessEvent): void {
   const subscribers = threadSubscribers.get(event.threadId);
   if (subscribers) {
     for (const callback of subscribers) {

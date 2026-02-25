@@ -23,7 +23,7 @@ import {
   getHarness,
   isHarnessInitialized,
   subscribeToThread,
-  type HarnessEvent,
+  type ThreadHarnessEvent,
 } from "./harness-manager";
 
 /**
@@ -223,7 +223,7 @@ export function createHarnessRoutes() {
           const unsubscribe = harness.subscribe((event) => {
             // Emit events for SSE subscribers
             emitThreadEvent({
-              type: event.type as HarnessEvent["type"],
+              type: event.type,
               threadId: harnessThreadId,
               data: event,
             });
