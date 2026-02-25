@@ -11,7 +11,7 @@
  * providing a "draft mode" similar to Claude Code's plan mode.
  */
 
-import { existsSync, mkdirSync, readFileSync, readdirSync, unlinkSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readdirSync, readFileSync, unlinkSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { generateDiff } from "./plan-mode-diff";
 

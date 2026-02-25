@@ -35,10 +35,7 @@ export function resolveDefaultModelForAgent(params: { cfg: ScionConfig }): Model
   return { provider: "openai", model: "gpt-4o-mini" };
 }
 
-export function buildModelAliasIndex(_params: {
-  cfg: ScionConfig;
-  defaultProvider?: string;
-}): ModelAliasIndex {
+export function buildModelAliasIndex(_params: { cfg: ScionConfig; defaultProvider?: string }): ModelAliasIndex {
   return new Map();
 }
 

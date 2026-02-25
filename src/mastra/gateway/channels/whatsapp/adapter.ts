@@ -19,7 +19,7 @@ import type {
   OutboundMessage,
   WhatsAppChannelConfig,
 } from "../types";
-import { type WhatsAppMessageEvent, chunkForWhatsApp, toInboundMessage, toWhatsAppFormat } from "./format";
+import { chunkForWhatsApp, toInboundMessage, toWhatsAppFormat, type WhatsAppMessageEvent } from "./format";
 
 const { default: makeWASocket, useMultiFileAuthState, DisconnectReason, downloadMediaMessage } = baileys as any;
 

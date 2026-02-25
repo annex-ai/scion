@@ -4,13 +4,17 @@
 import { Mastra } from "@mastra/core/mastra";
 import { SimpleAuth } from "@mastra/core/server";
 import type { Workflow } from "@mastra/core/workflows";
+import { serve } from "@mastra/inngest";
 import { PinoLogger } from "@mastra/loggers";
 import { CloudExporter, DefaultExporter, Observability, SensitiveDataFilter } from "@mastra/observability";
 import { coachAgent } from "./agents/coach";
-import { compactionAgent } from "./agents/compaction";
+// REMOVED: compactionAgent - replaced by Observational Memory
 import { interactiveAgent } from "./agents/interactive";
 import { observerAgent } from "./agents/observer";
 import { taskAgent } from "./agents/task";
+// Gateway API types and helpers
+import { apiError, SendMessageSchema } from "./gateway/api/types";
+import { handleHeartbeatAlert } from "./gateway/handlers/alert-handler";
 // Import gateway integration
 import {
   getGatewayInstance,
@@ -19,30 +23,23 @@ import {
   startGateway,
   stopGateway,
 } from "./gateway/integration";
-import { GatewaySecurityValidator, extractClientIp } from "./gateway/security";
-// Legacy agent - kept for backwards compatibility during migration
-import { reflectorAgent } from "./legacy/reflector";
-
-import { serve } from "@mastra/inngest";
+import { getLogCollector } from "./gateway/log-collector";
+import { extractClientIp, GatewaySecurityValidator } from "./gateway/security";
 import { inngest } from "./inngest";
 // Legacy workflow - kept for backwards compatibility during migration
 import { reflectionWorkflow } from "./legacy/reflection-workflow";
+// Legacy agent - kept for backwards compatibility during migration
+import { reflectorAgent } from "./legacy/reflector";
+import { getGatewaySecurityConfig, getSecurityConfig, getServerConfig } from "./lib/config";
 import { storage } from "./storage";
+import { createHarnessRoutes } from "./harness-routes";
 import { adaptationMasterWorkflow } from "./workflows/adaptation-master";
 import { coachWorkflow } from "./workflows/coach-workflow";
 import { dynamicFlowRouterWorkflow } from "./workflows/dynamic-flow-router";
 import { nativeFlowExecutionWorkflow } from "./workflows/native-flow-execution-workflow";
 import { observeWorkflow } from "./workflows/observe-workflow";
 import { reflectWorkflow } from "./workflows/reflect-workflow";
-
-import { handleHeartbeatAlert } from "./gateway/handlers/alert-handler";
-
-import { getGatewaySecurityConfig, getSecurityConfig, getServerConfig } from "./lib/config";
 import { loadSkillWorkflows, toWorkflowsRecord } from "./workflows/skill-workflow-loader";
-
-// Gateway API types and helpers
-import { SendMessageSchema, apiError } from "./gateway/api/types";
-import { getLogCollector } from "./gateway/log-collector";
 
 // Load skill workflows at module initialization (build-time compilation)
 // This happens once when the server imports this module
@@ -120,7 +117,7 @@ export const mastra = new Mastra({
     // Pre-compiled skill workflows (build-time)
     ...skillWorkflowsRecord,
   },
-  agents: { interactiveAgent, taskAgent, reflectorAgent, compactionAgent, observerAgent, coachAgent },
+  agents: { interactiveAgent, taskAgent, reflectorAgent, observerAgent, coachAgent },
   scorers: {},
   storage,
   logger: new PinoLogger({
@@ -666,6 +663,11 @@ export const mastra = new Mastra({
           };
         },
       },
+
+      // ====================================================================
+      // Harness API — Orchestration layer for gateway communication
+      // ====================================================================
+      ...createHarnessRoutes(),
     ],
   },
   observability: new Observability({
@@ -686,3 +688,7 @@ export const mastra = new Mastra({
 
 // Export the skill load result for introspection
 export { skillLoadResult };
+
+// Export harness factory for gateway/TUI integration
+// The gateway should use harness.sendMessage() instead of direct agent calls
+export { createAgentHarness } from "./harness";

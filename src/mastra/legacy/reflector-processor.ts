@@ -6,9 +6,9 @@ import type { ProcessOutputResultArgs, Processor } from "@mastra/core/processors
 import { type ReflectorAnalysis, reflectorAnalysisSchema } from "../lib/reflection-utils";
 import { reflectorAgent } from "./reflector";
 
+export type { ReflectorAnalysis } from "../lib/reflection-utils";
 // Re-export schema and type for backward compatibility
 export { reflectorAnalysisSchema } from "../lib/reflection-utils";
-export type { ReflectorAnalysis } from "../lib/reflection-utils";
 
 /**
  * ReflectorProcessor — output processor that analyzes assistant responses

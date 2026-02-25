@@ -111,10 +111,7 @@ export function getMediaKind(mime: string): "image" | "audio" | "video" | "docum
 /**
  * Check if audio can be sent as voice bubble
  */
-export function isVoiceCompatibleAudio(opts: {
-  contentType?: string | null;
-  fileName?: string | null;
-}): boolean {
+export function isVoiceCompatibleAudio(opts: { contentType?: string | null; fileName?: string | null }): boolean {
   const mime = opts.contentType?.toLowerCase();
   if (mime && VOICE_AUDIO_MIMES.has(mime)) {
     return true;

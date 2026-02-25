@@ -3,10 +3,10 @@
 
 import fs from "node:fs/promises";
 import { formatCliCommand } from "../cli/command-format.js";
-import { PortInUseError, ensurePortAvailable } from "../infra/ports.js";
+import { ensurePortAvailable, PortInUseError } from "../infra/ports.js";
 import { getTailnetHostname } from "../infra/tailscale.js";
 import { logger } from "../logger.js";
-import { type RuntimeEnv, defaultRuntime } from "../runtime.js";
+import { defaultRuntime, type RuntimeEnv } from "../runtime.js";
 import { startMediaServer } from "./server.js";
 import { saveMediaSource } from "./store.js";
 

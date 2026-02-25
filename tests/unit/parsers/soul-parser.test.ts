@@ -2,7 +2,7 @@
 // Copyright (C) 2025-2026 Sacha Nelson
 
 import { describe, expect, test } from "bun:test";
-import { type SoulConfig, parseSoulContent, validateSoulConfig } from "../../../src/mastra/lib/parsers/soul-parser";
+import { parseSoulContent, type SoulConfig, validateSoulConfig } from "../../../src/mastra/lib/parsers/soul-parser";
 
 describe("Soul Parser", () => {
   describe("parseSoulContent", () => {

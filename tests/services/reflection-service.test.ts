@@ -15,14 +15,12 @@ import { join } from "node:path";
 import { clearConfigCache, loadAgentConfig } from "../../src/mastra/lib/config";
 import {
   type AggregatedPattern,
-  type Heuristic,
-  type RawPattern,
-  type ReflectionState,
   buildBatchPrompt,
   chunkArray,
   extractReasoningContent,
   extractTextContent,
   generateHeuristics,
+  type Heuristic,
   isSimilar,
   isToolCallOnly,
   loadState,
@@ -31,6 +29,8 @@ import {
   mergePatterns,
   parseReflectionsMd,
   parseSuggestion,
+  type RawPattern,
+  type ReflectionState,
   saveState,
   writeReflections,
 } from "../../src/mastra/lib/reflection-utils";

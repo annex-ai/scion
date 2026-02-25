@@ -3,9 +3,9 @@
 
 import { describe, expect, test } from "bun:test";
 import {
-  type UserConfig,
   getTimeBasedGreeting,
   parseUserContent,
+  type UserConfig,
   validateUserConfig,
 } from "../../../src/mastra/lib/parsers/user-parser";
 

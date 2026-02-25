@@ -247,10 +247,7 @@ export async function captureScreenshot(opts: {
   });
 }
 
-export async function captureScreenshotPng(opts: {
-  wsUrl: string;
-  fullPage?: boolean;
-}): Promise<Buffer> {
+export async function captureScreenshotPng(opts: { wsUrl: string; fullPage?: boolean }): Promise<Buffer> {
   return captureScreenshot({ wsUrl: opts.wsUrl, fullPage: opts.fullPage, format: "png" });
 }
 
@@ -258,10 +255,7 @@ export async function captureScreenshotPng(opts: {
 // Target creation
 // ---------------------------------------------------------------------------
 
-export async function createTargetViaCdp(opts: {
-  cdpUrl: string;
-  url: string;
-}): Promise<{ targetId: string }> {
+export async function createTargetViaCdp(opts: { cdpUrl: string; url: string }): Promise<{ targetId: string }> {
   const ver = await fetchJson<{ webSocketDebuggerUrl?: string }>(appendCdpPath(opts.cdpUrl, "/json/version"), 1500);
   const raw = String(ver?.webSocketDebuggerUrl ?? "").trim();
   const wsUrl = raw ? normalizeCdpWsUrl(raw, opts.cdpUrl) : "";
@@ -352,10 +346,7 @@ export function formatAriaSnapshot(nodes: RawAXNode[], limit: number): AriaSnaps
   return out;
 }
 
-export async function snapshotAria(opts: {
-  wsUrl: string;
-  limit?: number;
-}): Promise<{ nodes: AriaSnapshotNode[] }> {
+export async function snapshotAria(opts: { wsUrl: string; limit?: number }): Promise<{ nodes: AriaSnapshotNode[] }> {
   const cap = Math.max(1, Math.min(2000, Math.floor(opts.limit ?? 500)));
   return withCdpSocket(opts.wsUrl, async (send) => {
     await send("Accessibility.enable").catch(() => {});

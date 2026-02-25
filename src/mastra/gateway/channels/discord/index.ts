@@ -3,9 +3,9 @@
 
 export { DiscordAdapter } from "./adapter";
 export {
-  toInboundMessage,
-  toDiscordFormat,
-  fromDiscordFormat,
   chunkForDiscord,
   type DiscordMessageEvent,
+  fromDiscordFormat,
+  toDiscordFormat,
+  toInboundMessage,
 } from "./format";

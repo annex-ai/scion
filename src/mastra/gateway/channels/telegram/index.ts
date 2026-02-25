@@ -3,9 +3,9 @@
 
 export { TelegramAdapter } from "./adapter";
 export {
+  chunkForTelegram,
+  fromTelegramFormat,
+  type TelegramMessageEvent,
   toInboundMessage,
   toTelegramFormat,
-  fromTelegramFormat,
-  chunkForTelegram,
-  type TelegramMessageEvent,
 } from "./format";

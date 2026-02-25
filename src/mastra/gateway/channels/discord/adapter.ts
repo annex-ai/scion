@@ -16,7 +16,7 @@ import type {
   InboundMessage,
   OutboundMessage,
 } from "../types";
-import { type DiscordMessageEvent, chunkForDiscord, toDiscordFormat, toInboundMessage } from "./format";
+import { chunkForDiscord, type DiscordMessageEvent, toDiscordFormat, toInboundMessage } from "./format";
 
 /**
  * Discord channel adapter

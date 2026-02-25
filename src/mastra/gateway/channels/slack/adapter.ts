@@ -15,7 +15,7 @@ import type {
   OutboundMessage,
   SlackChannelConfig,
 } from "../types";
-import { type SlackFile, type SlackMessageEvent, chunkForSlack, toInboundMessage, toSlackFormat } from "./format";
+import { chunkForSlack, type SlackFile, type SlackMessageEvent, toInboundMessage, toSlackFormat } from "./format";
 
 /**
  * Fetch a Slack file URL handling cross-origin redirects properly.

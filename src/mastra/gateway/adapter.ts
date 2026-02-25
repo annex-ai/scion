@@ -29,11 +29,10 @@
  * The adapter only passes channel context for callbacks and memory configuration.
  */
 
-import { RequestContext } from "@mastra/core/request-context";
-import { getLoopConfig, getSecurityConfig } from "../lib/config";
+import { getSecurityConfig } from "../lib/config";
 import { formatMediaIntoMessage } from "./channels/media/format.js";
 import { processMediaAttachments } from "./channels/media/understand.js";
-import { type InboundMessage, type OutboundAttachment, createThreadKey } from "./channels/types";
+import { createThreadKey, type InboundMessage, type OutboundAttachment } from "./channels/types";
 import { logger } from "./logger";
 
 /**
@@ -131,11 +130,16 @@ export class GatewayToMastraAdapter {
   }
 
   /**
-   * Call the Mastra agent via HTTP
+   * Call the Mastra Harness via HTTP
+   *
+   * Uses the harness endpoints instead of direct agent calls.
+   * The harness manages:
+   * - Mode-based model selection
+   * - Tool permission system
+   * - Observational Memory with dynamic config
    */
-  private async callAgentViaHttp(
+  private async callHarnessViaHttp(
     message: string,
-    memoryConfig: { resource: string; thread: string },
     channelContext: {
       channelType: string;
       channelId: string;
@@ -144,29 +148,17 @@ export class GatewayToMastraAdapter {
     },
   ): Promise<{
     text?: string;
-    steps?: Array<{
-      toolResults?: Array<{
-        payload: {
-          toolName: string;
-          result: unknown;
-        };
-      }>;
-    }>;
-    traceId?: string;
+    threadId?: string;
   }> {
-    const url = `${this.mastraUrl}/api/agents/interactiveAgent/generate`;
-
-    const loop = await getLoopConfig();
+    const url = `${this.mastraUrl}/_harness/sendMessage`;
 
     logger.info(
       {
         url,
         messageLength: message.length,
         channelType: channelContext.channelType,
-        maxSteps: loop.max_steps_per_turn ?? 50,
-        maxRetries: loop.max_retries_per_step ?? 3,
       },
-      "Calling agent via HTTP",
+      "Calling harness via HTTP",
     );
 
     const headers: Record<string, string> = {
@@ -187,18 +179,10 @@ export class GatewayToMastraAdapter {
         headers,
         signal: controller.signal,
         body: JSON.stringify({
-          messages: [{ role: "user", content: message }],
-          memory: memoryConfig,
-          maxSteps: loop.max_steps_per_turn ?? 50,
-          maxRetries: loop.max_retries_per_step ?? 3,
-          requestContext: {
-            channelType: channelContext.channelType,
-            channelId: channelContext.channelId,
-            threadId: channelContext.threadId,
-            threadKey: channelContext.threadKey,
-            memoryThreadId: memoryConfig.thread,
-            memoryResource: memoryConfig.resource,
-          },
+          content: message,
+          channelType: channelContext.channelType,
+          channelId: channelContext.channelId,
+          threadId: channelContext.threadId,
         }),
       });
     } finally {
@@ -207,7 +191,65 @@ export class GatewayToMastraAdapter {
 
     if (!response.ok) {
       const errorText = await response.text();
-      throw new Error(`Agent HTTP call failed: ${response.status} ${errorText}`);
+      throw new Error(`Harness HTTP call failed: ${response.status} ${errorText}`);
+    }
+
+    return response.json();
+  }
+
+  /**
+   * Initialize the harness (call once at startup)
+   */
+  async initHarness(): Promise<void> {
+    const url = `${this.mastraUrl}/_harness/init`;
+
+    const headers: Record<string, string> = {
+      "Content-Type": "application/json",
+    };
+    if (process.env.GATEWAY_API_KEY) {
+      headers.Authorization = `Bearer ${process.env.GATEWAY_API_KEY}`;
+    }
+
+    const response = await fetch(url, { method: "POST", headers });
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`Harness init failed: ${response.status} ${errorText}`);
+    }
+
+    const result = await response.json();
+    logger.info(
+      {
+        currentModeId: result.currentModeId,
+        currentModelId: result.currentModelId,
+        resourceId: result.resourceId,
+      },
+      "Harness initialized",
+    );
+  }
+
+  /**
+   * Get harness status
+   */
+  async getHarnessStatus(): Promise<{
+    initialized: boolean;
+    currentModeId?: string;
+    currentModelId?: string;
+    currentThreadId?: string;
+    resourceId?: string;
+    isRunning?: boolean;
+  }> {
+    const url = `${this.mastraUrl}/_harness/status`;
+
+    const headers: Record<string, string> = {
+      "Content-Type": "application/json",
+    };
+    if (process.env.GATEWAY_API_KEY) {
+      headers.Authorization = `Bearer ${process.env.GATEWAY_API_KEY}`;
+    }
+
+    const response = await fetch(url, { headers });
+    if (!response.ok) {
+      return { initialized: false };
     }
 
     return response.json();
@@ -247,15 +289,8 @@ export class GatewayToMastraAdapter {
       }
     }
 
-    const cwd = options?.cwd ?? this.defaultCwd;
-    const requestContext = new RequestContext();
-    requestContext.set("cwd", cwd);
-    requestContext.set("channelType", message.channelType);
-    requestContext.set("channelId", message.channelId);
-    requestContext.set("threadId", message.threadId || message.id);
-    requestContext.set("threadKey", threadKey);
-    requestContext.set("memoryThreadId", memoryThread);
-    requestContext.set("memoryResource", resourceId);
+    // Note: Request context is now handled by the harness internally
+    // The harness receives channelType, channelId, threadId via the sendMessage payload
 
     let messageText = message.text;
     if (message.attachments?.length) {
@@ -272,24 +307,19 @@ export class GatewayToMastraAdapter {
       ? `${options.context}\n\n${senderContext}${messageText}`
       : `${senderContext}${messageText}`;
 
-    const memoryConfig = {
-      resource: resourceId,
-      thread: memoryThread,
-    };
-
     try {
       logger.info(
         {
           stage: "PRE_GENERATE",
           threadKey,
-          memoryResource: memoryConfig.resource,
-          memoryThread: memoryConfig.thread,
+          resourceId,
+          memoryThread,
           messageLength: fullMessage.length,
         },
-        "🚀 About to call agent via HTTP",
+        "🚀 About to call harness via HTTP",
       );
 
-      const response = await this.callAgentViaHttp(fullMessage, memoryConfig, {
+      const response = await this.callHarnessViaHttp(fullMessage, {
         channelType: message.channelType,
         channelId: message.channelId,
         threadId: message.threadId || message.id,
@@ -302,40 +332,15 @@ export class GatewayToMastraAdapter {
           threadKey,
           responseLength: response.text?.length || 0,
         },
-        "✅ Agent response received",
+        "✅ Harness response received",
       );
 
-      // Extract attachments from tool results
-      const attachments: OutboundAttachment[] = [];
-      if (response.steps) {
-        for (const step of response.steps) {
-          if (step.toolResults) {
-            for (const toolResult of step.toolResults) {
-              const { toolName, result } = toolResult.payload;
-              if (toolName === "text-to-speech" && result) {
-                const ttsResult = result as {
-                  success: boolean;
-                  filePath?: string;
-                  voiceCompatible?: boolean;
-                };
-                if (ttsResult.success && ttsResult.filePath) {
-                  const ext = ttsResult.filePath.split(".").pop();
-                  attachments.push({
-                    type: "audio",
-                    path: ttsResult.filePath,
-                    mimeType: ext === "opus" ? "audio/ogg" : "audio/mpeg",
-                    asVoice: ttsResult.voiceCompatible,
-                  });
-                }
-              }
-            }
-          }
-        }
-      }
+      // TODO: Extract attachments from harness events (TTS results, etc.)
+      // For now, attachments are not supported via harness
+      // This can be enhanced by subscribing to harness events via SSE
 
       return {
         text: response.text || "",
-        attachments: attachments.length > 0 ? attachments : undefined,
       };
     } catch (error) {
       const errorObj = error as any;

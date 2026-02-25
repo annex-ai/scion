@@ -12,7 +12,7 @@ import { readFile } from "node:fs/promises";
 import { google } from "googleapis";
 import { logger } from "../../logger";
 import type { ChannelAdapter, GoogleChatChannelConfig, InboundMessage, OutboundMessage } from "../types";
-import { type GoogleChatMessageEvent, chunkForGoogleChat, toGoogleChatFormat, toInboundMessage } from "./format";
+import { chunkForGoogleChat, type GoogleChatMessageEvent, toGoogleChatFormat, toInboundMessage } from "./format";
 
 /**
  * Google Chat channel adapter

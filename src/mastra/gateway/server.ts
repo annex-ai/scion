@@ -19,7 +19,7 @@ import { createThreadKey } from "./channels/types";
 import { WhatsAppAdapter } from "./channels/whatsapp";
 import type { GatewayConfig } from "./config";
 import { type CronService, createCronService, destroyCronService } from "./cron";
-import { type HeartbeatService, createHeartbeatService } from "./heartbeat";
+import { createHeartbeatService, type HeartbeatService } from "./heartbeat";
 import { logger } from "./logger";
 
 /**

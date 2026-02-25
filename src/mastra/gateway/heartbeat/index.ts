@@ -24,9 +24,9 @@
  */
 
 export {
-  HeartbeatService,
-  createHeartbeatService,
-  type HeartbeatServiceConfig,
-  type HeartbeatResult,
   type AlertItem,
+  createHeartbeatService,
+  type HeartbeatResult,
+  HeartbeatService,
+  type HeartbeatServiceConfig,
 } from "./service";

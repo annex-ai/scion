@@ -4,9 +4,14 @@
 /**
  * Shared Memory Instance
  *
- * Exports a Memory instance that can be used by both agents and tools.
- * This ensures tools can access working memory even when called outside
- * an agent context (e.g., from Mastra Studio).
+ * Exports a static Memory instance for backwards compatibility with tools
+ * and agents that access memory outside of harness context.
+ *
+ * NOTE: Observational Memory is DISABLED here because OM requires dynamic
+ * model resolution via requestContext (harness state). Use the harness's
+ * dynamic memory factory for OM-enabled agent interactions.
+ *
+ * @see src/mastra/harness.ts for OM-enabled dynamic memory
  */
 
 import { fastembed } from "@mastra/fastembed";
@@ -20,13 +25,16 @@ const memoryConfig = await getMemoryConfig();
 console.log(
   `[shared-memory] Initializing with config: lastMessages=${memoryConfig.last_messages}, topK=${memoryConfig.semantic_recall_top_k}`,
 );
+console.log(`[shared-memory] OM disabled in static memory - use harness for OM-enabled interactions`);
 
 /**
- * Shared Memory instance
+ * Shared Memory instance (OM disabled)
  *
  * Uses the same storage backend as the interactive agent.
- * All memory operations (getThreadById, updateWorkingMemory, etc.)
+ * All memory operations (getThreadById, semantic recall, etc.)
  * will access the same data regardless of which Memory instance is used.
+ *
+ * For OM-enabled memory, use the harness's dynamic memory factory.
  */
 export const sharedMemory = new Memory({
   embedder: fastembed,
@@ -34,14 +42,14 @@ export const sharedMemory = new Memory({
   vector,
   options: {
     lastMessages: memoryConfig.last_messages,
-    workingMemory: {
-      enabled: memoryConfig.working_memory_enabled,
-      scope: memoryConfig.working_memory_scope,
-    },
+    workingMemory: { enabled: false },
     semanticRecall: {
       topK: memoryConfig.semantic_recall_top_k,
       messageRange: memoryConfig.semantic_recall_message_range,
       scope: memoryConfig.semantic_recall_scope,
     },
+    // OM disabled - requires requestContext for dynamic model resolution
+    // See harness.ts createDynamicMemory() for OM-enabled memory
+    observationalMemory: { enabled: false },
   },
 });

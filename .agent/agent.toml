@@ -56,8 +56,14 @@ last_messages = 30
 semantic_recall_top_k = 5
 semantic_recall_message_range = 2
 semantic_recall_scope = "resource"
-working_memory_enabled = true
+# Working memory disabled - replaced by Observational Memory
+working_memory_enabled = false
 working_memory_scope = "resource"
+# Observational Memory configuration
+om_model = "google/gemini-2.5-flash"
+om_scope = "resource"
+om_observation_threshold = 50000  # Baseline: 50k to balance latency vs frequency
+om_reflection_threshold = 60000   # Baseline: 60k (adjust up if latency >500ms)
 
 [security]
 resource_id = "interactive-agent"
@@ -121,15 +127,7 @@ poll_interval_seconds = 30
 thread_ttl_days = 7
 cleanup_interval_ms = 3600000
 
-[attention_steering]
-# Legacy reflection system - kept for backwards compatibility
-enable_reflections = false
-cron_schedule = "*/5 * * * *"
-min_batch_size = 10
-max_pending_minutes = 30
-max_messages_per_run = 100
-reflections_md_path = "REFLECTIONS.md"
-reflection_state_path = "reflection-state.json"
+# REMOVED: [attention_steering] section - replaced by Observational Memory
 
 [adaptation]
 # Observe → Reflect → Coach adaptation pipeline
@@ -141,18 +139,7 @@ coaching_enabled = true
 coaching_max_pending = 3
 coaching_dedup_window_days = 7
 
-[compaction]
-enable_compaction = true
-mode = "token_compaction"
-max_context_tokens = 35000
-trigger_threshold = 25000
-preserve_duration_minutes = 60
-preserve_recent_messages = 10
-strategy = "summarize"
-max_summary_length = 2500
-preserve_decisions = true
-preserve_errors = true
-preserve_user_preferences = true
+# REMOVED: [compaction] section - replaced by Observational Memory in [memory]
 
 [workspace]
 name = "agent-workspace"

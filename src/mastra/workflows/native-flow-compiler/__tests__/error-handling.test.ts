@@ -14,9 +14,9 @@ import { parseMermaidFlowchart } from "../mermaid-parser";
 import { parseSkillContent } from "../skill-parser";
 import {
   type CompileOptions,
+  compileFlowAst,
   type OnErrorParams,
   type OnFinishParams,
-  compileFlowAst,
   taskOutputSchema,
   workflowOutputSchema,
 } from "../workflow-compiler";

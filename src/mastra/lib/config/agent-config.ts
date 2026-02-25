@@ -78,6 +78,11 @@ const memorySchema = z.object({
   semantic_recall_scope: z.enum(["resource", "thread"]),
   working_memory_enabled: z.boolean(),
   working_memory_scope: z.enum(["resource", "thread"]),
+  // Observational Memory config
+  om_model: z.string().optional(),
+  om_scope: z.enum(["thread", "resource"]).default("resource"),
+  om_observation_threshold: z.number().default(50000),
+  om_reflection_threshold: z.number().default(60000),
 });
 
 const serverSchema = z.object({
@@ -160,16 +165,7 @@ const heartbeatSchema = z.object({
   targets: z.array(heartbeatTargetSchema).min(1, "At least one heartbeat target is required"),
 });
 
-const attentionSteeringSchema = z.object({
-  enable_reflections: z.boolean(),
-  // Reflection operational config
-  cron_schedule: z.string(),
-  min_batch_size: z.number().int().min(1),
-  max_pending_minutes: z.number().min(1),
-  max_messages_per_run: z.number(),
-  reflections_md_path: z.string(),
-  reflection_state_path: z.string(),
-});
+// REMOVED: attentionSteeringSchema - replaced by Observational Memory in memory.ts
 
 const cronSchema = z.object({
   cron_md_path: z.string(),
@@ -264,14 +260,15 @@ const agentConfigSchema = z.object({
   models: modelsSchema.optional(),
   services: servicesSchema,
   heartbeat: heartbeatSchema.optional(),
-  attention_steering: attentionSteeringSchema,
+  // REMOVED: attention_steering - replaced by Observational Memory
   adaptation: adaptationSchema,
   security: securitySchema.optional(),
   memory: memorySchema.optional(),
   server: serverSchema.optional(),
   cron: cronSchema.optional(),
   workspace: workspaceSchema.optional(),
-  compaction: compactionSchema,
+  // DEPRECATED: compaction section - replaced by Observational Memory in [memory]
+  compaction: compactionSchema.optional(),
   flows: flowsSchema,
   gateway: gatewaySchema.optional(),
   // Note: skills configuration moved to [workspace].skills_path
@@ -283,9 +280,7 @@ export type AgentConfig = z.infer<typeof agentConfigSchema>;
 export type LoopSection = z.infer<typeof loopSchema>;
 export type HeartbeatSection = z.infer<typeof heartbeatSchema>;
 export type HeartbeatTarget = z.infer<typeof heartbeatTargetSchema>;
-export type AttentionSteeringSection = z.infer<typeof attentionSteeringSchema>;
-/** @deprecated Use AttentionSteeringSection — reflection config now lives under [attention_steering] */
-export type ReflectionSection = AttentionSteeringSection;
+// REMOVED: AttentionSteeringSection and ReflectionSection - replaced by Observational Memory
 export type SecuritySection = z.infer<typeof securitySchema>;
 export type MemorySection = z.infer<typeof memorySchema>;
 export type ServerSection = z.infer<typeof serverSchema>;
@@ -542,10 +537,18 @@ export async function getWorkspaceConfig(): Promise<WorkspaceSection> {
 
 /**
  * Get reflection settings from agent config
- * @deprecated Use getAttentionSteeringConfig — reflection config now lives under [attention_steering]
+ * @deprecated Legacy - returns stub values. Reflection is now handled by Observational Memory.
  */
-export async function getReflectionConfig(): Promise<AttentionSteeringSection> {
-  return getAttentionSteeringConfig();
+export async function getReflectionConfig() {
+  return {
+    enable_reflections: false, // Disabled - OM replaces this
+    cron_schedule: "*/5 * * * *",
+    min_batch_size: 10,
+    max_pending_minutes: 30,
+    max_messages_per_run: 100,
+    reflections_md_path: "REFLECTIONS.md",
+    reflection_state_path: "reflection-state.json",
+  };
 }
 
 /**
@@ -560,13 +563,7 @@ export async function getCronConfig(): Promise<CronSection> {
   return config.cron;
 }
 
-/**
- * Get attention steering settings from agent config
- */
-export async function getAttentionSteeringConfig(): Promise<AttentionSteeringSection> {
-  const config = await loadAgentConfig();
-  return config.attention_steering;
-}
+// REMOVED: getAttentionSteeringConfig - replaced by Observational Memory
 
 /**
  * Get services settings from agent config
@@ -578,8 +575,9 @@ export async function getServicesConfig(): Promise<ServicesSection> {
 
 /**
  * Get compaction settings from agent config
+ * @deprecated Compaction is replaced by Observational Memory in [memory] section
  */
-export async function getCompactionConfig(): Promise<CompactionSection> {
+export async function getCompactionConfig(): Promise<CompactionSection | undefined> {
   const config = await loadAgentConfig();
   return config.compaction;
 }

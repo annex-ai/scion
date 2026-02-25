@@ -2,34 +2,31 @@
 // Copyright (C) 2025-2026 Sacha Nelson
 
 export {
+  type FormatOptions,
+  formatMediaBlocks,
+  formatMediaIntoMessage,
+} from "./format";
+export {
   detectMime,
-  getMediaKind,
-  getFileExtension,
   getExtensionForMime,
+  getFileExtension,
+  getMediaKind,
   isVoiceCompatibleAudio,
 } from "./mime";
 
 export {
-  saveMediaBuffer,
-  downloadAndSaveMedia,
-  readMediaFile,
-  deleteMediaFile,
-  type SavedMedia,
-} from "./store";
-
-export {
-  parseMediaFromOutput,
   buildMediaNote,
   type ParsedMediaOutput,
+  parseMediaFromOutput,
 } from "./parse";
-
 export {
-  processMediaAttachments,
+  deleteMediaFile,
+  downloadAndSaveMedia,
+  readMediaFile,
+  type SavedMedia,
+  saveMediaBuffer,
+} from "./store";
+export {
   type MediaUnderstandingOptions,
+  processMediaAttachments,
 } from "./understand";
-
-export {
-  formatMediaBlocks,
-  formatMediaIntoMessage,
-  type FormatOptions,
-} from "./format";

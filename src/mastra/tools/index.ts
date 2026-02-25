@@ -31,44 +31,36 @@ import {
 // Orchestration tools (may depend on workflows)
 
 import { askUserTool } from "./ask-user";
+import { browserTool } from "./browser";
 import { claudeTool } from "./claude";
 import { codexTool } from "./codex";
+import { cronListTool } from "./cron-list";
+// Cron management
+import { cronManageTool } from "./cron-manage";
+// Agent delegation (swarm & team patterns)
+import { delegateToAgentTool } from "./delegate-agent";
 import { geminiTool } from "./gemini";
-import { sequentialThinkingTool } from "./sequential-thinking";
-import { textToSpeechTool } from "./text-to-speech";
-
-import { kimiTool } from "./kimi";
-
-import { planModeTool } from "./plan-mode";
 
 import { gooseFlowTool } from "./goose-flow";
+import { handoffToAgentTool } from "./handoff-agent";
+// Heartbeat control
+import { heartbeatControlTool } from "./heartbeat-control";
+import { kimiTool } from "./kimi";
 import { kimiFlowTool } from "./kimi-flow";
-
-import { browserTool } from "./browser";
+import { newSessionTool } from "./new-session";
+import { planModeTool } from "./plan-mode";
+import { sequentialThinkingTool } from "./sequential-thinking";
 import { taskArchiveTool } from "./task-archive";
 // Task tools (Claude Code-style progress tracking)
 import { taskCreateTool } from "./task-create";
 import { taskGetTool } from "./task-get";
 import { taskListTool } from "./task-list";
 import { taskUpdateTool } from "./task-update";
-
-import { newSessionTool } from "./new-session";
-// Soul system tools
-import { updatePreferencesTool } from "./update-preferences";
-
-// Heartbeat control
-import { heartbeatControlTool } from "./heartbeat-control";
-
-import { cronListTool } from "./cron-list";
-// Cron management
-import { cronManageTool } from "./cron-manage";
-
-// Agent delegation (swarm & team patterns)
-import { delegateToAgentTool } from "./delegate-agent";
-import { handoffToAgentTool } from "./handoff-agent";
-
+import { textToSpeechTool } from "./text-to-speech";
 // Adaptation system
 import { triggerAdaptationTool } from "./trigger-adaptation";
+// Soul system tools
+import { updatePreferencesTool } from "./update-preferences";
 
 // Re-export all tools for external use
 export {

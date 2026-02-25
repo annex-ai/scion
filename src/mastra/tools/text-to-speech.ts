@@ -6,9 +6,17 @@ import { OpenAIVoice } from "@mastra/voice-openai";
 import { z } from "zod";
 import { saveMediaBuffer } from "../gateway/channels/media/store";
 
-const voiceClient = new OpenAIVoice({
-  speaker: "alloy",
-});
+// Lazy-initialized voice client to avoid startup crash when OPENAI_API_KEY is missing
+let voiceClient: OpenAIVoice | null = null;
+
+function getVoiceClient(): OpenAIVoice {
+  if (!voiceClient) {
+    voiceClient = new OpenAIVoice({
+      speaker: "alloy",
+    });
+  }
+  return voiceClient;
+}
 
 /**
  * Channel-specific output formats for TTS
@@ -56,7 +64,7 @@ export const textToSpeechTool = createTool({
 
     try {
       // Generate speech using Mastra voice with channel-appropriate format
-      const audioStream = await voiceClient.speak(text, {
+      const audioStream = await getVoiceClient().speak(text, {
         speaker: voice || "alloy",
         responseFormat: format.responseFormat,
       });

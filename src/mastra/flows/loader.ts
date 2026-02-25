@@ -16,7 +16,7 @@ import { existsSync, readdirSync } from "node:fs";
 import { join, resolve } from "node:path";
 import type { Workflow } from "@mastra/core/workflows";
 import { compileFlowToWorkflow, isFlowFile, parseFlowFile } from "./compiler";
-import type { CompiledFlow, FlowError, FlowLoadResult, FlowLoaderConfig } from "./types";
+import type { CompiledFlow, FlowError, FlowLoaderConfig, FlowLoadResult } from "./types";
 
 /**
  * Scan workspace and compile all flows to workflows.

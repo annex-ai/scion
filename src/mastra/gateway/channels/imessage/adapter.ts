@@ -18,7 +18,7 @@ import type {
   InboundMessage,
   OutboundMessage,
 } from "../types";
-import { type IMessageMessageEvent, chunkForIMessage, toIMessageFormat, toInboundMessage } from "./format";
+import { chunkForIMessage, type IMessageMessageEvent, toIMessageFormat, toInboundMessage } from "./format";
 
 /**
  * iMessage channel adapter
@@ -255,8 +255,8 @@ export class IMessageAdapter implements ChannelAdapter {
           const senderAddress = message.handle.address;
           const isAllowed = this.config.allowFrom.some((allowed) => {
             // Normalize for comparison (remove special chars)
-            const normalizedAllowed = allowed.replace(/[\s\-\(\)]/g, "").toLowerCase();
-            const normalizedSender = senderAddress.replace(/[\s\-\(\)]/g, "").toLowerCase();
+            const normalizedAllowed = allowed.replace(/[\s\-()]/g, "").toLowerCase();
+            const normalizedSender = senderAddress.replace(/[\s\-()]/g, "").toLowerCase();
             return (
               normalizedAllowed === normalizedSender ||
               normalizedAllowed.includes(normalizedSender) ||

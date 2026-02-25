@@ -394,19 +394,19 @@ export const browserTool = createTool({
 // Re-exports
 // ---------------------------------------------------------------------------
 
-export * from "./types";
-export * from "./constants";
-export * from "./schema";
 export {
+  isChromeReachable,
   launchBrowserChrome,
   stopBrowserChrome,
-  isChromeReachable,
 } from "./chrome/launcher";
+export * from "./constants";
 export {
   getPageForTargetId,
   refLocator,
 } from "./core/playwright-session";
 export {
-  buildRoleSnapshotFromAriaSnapshot,
   buildRoleSnapshotFromAiSnapshot,
+  buildRoleSnapshotFromAriaSnapshot,
 } from "./core/snapshot-engine";
+export * from "./schema";
+export * from "./types";

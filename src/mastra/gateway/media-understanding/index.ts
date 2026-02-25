@@ -6,7 +6,7 @@ export { formatMediaUnderstandingBody } from "./format.js";
 export { resolveMediaUnderstandingScope } from "./scope.js";
 export type {
   MediaAttachment,
+  MediaUnderstandingKind,
   MediaUnderstandingOutput,
   MediaUnderstandingProvider,
-  MediaUnderstandingKind,
 } from "./types.js";

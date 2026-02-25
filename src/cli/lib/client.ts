@@ -183,11 +183,7 @@ export class MastraClient {
   // Threads API (Mastra built-in /api/memory/)
   // =========================================================================
 
-  async listThreads(opts?: {
-    resourceId?: string;
-    page?: number;
-    perPage?: number;
-  }): Promise<{
+  async listThreads(opts?: { resourceId?: string; page?: number; perPage?: number }): Promise<{
     threads: any[];
     page: number;
     perPage: number;

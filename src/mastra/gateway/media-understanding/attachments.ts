@@ -8,7 +8,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import type { MediaUnderstandingAttachmentsConfig } from "../config/types.tools.js";
 import { logVerbose, shouldLogVerbose } from "../globals.js";
-import { MediaFetchError, fetchRemoteMedia } from "../media/fetch.js";
+import { fetchRemoteMedia, MediaFetchError } from "../media/fetch.js";
 import { detectMime, getFileExtension, isAudioFileName, kindFromMime } from "../media/mime.js";
 import type { MediaContext } from "./context.js";
 import { MediaUnderstandingSkipError } from "./errors.js";
@@ -316,11 +316,7 @@ export class MediaAttachmentCache {
     }
   }
 
-  async getPath(params: {
-    attachmentIndex: number;
-    maxBytes?: number;
-    timeoutMs: number;
-  }): Promise<MediaPathResult> {
+  async getPath(params: { attachmentIndex: number; maxBytes?: number; timeoutMs: number }): Promise<MediaPathResult> {
     const entry = await this.ensureEntry(params.attachmentIndex);
     if (entry.resolvedPath) {
       if (params.maxBytes) {
