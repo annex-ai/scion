@@ -28,8 +28,7 @@ import { extractClientIp, GatewaySecurityValidator } from "./gateway/security";
 import { inngest } from "./inngest";
 // Legacy workflow - kept for backwards compatibility during migration
 import { reflectionWorkflow } from "./legacy/reflection-workflow";
-// Legacy agent - kept for backwards compatibility during migration
-import { reflectorAgent } from "./legacy/reflector";
+import { reflectorAgent } from "./agents/reflector";
 import { getGatewaySecurityConfig, getSecurityConfig, getServerConfig } from "./lib/config";
 import { storage } from "./storage";
 import { createHarnessRoutes } from "./harness-routes";

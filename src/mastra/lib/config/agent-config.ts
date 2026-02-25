@@ -79,10 +79,11 @@ const memorySchema = z.object({
   working_memory_enabled: z.boolean(),
   working_memory_scope: z.enum(["resource", "thread"]),
   // Observational Memory config
-  om_model: z.string().optional(),
-  om_scope: z.enum(["thread", "resource"]).default("resource"),
-  om_observation_threshold: z.number().default(50000),
-  om_reflection_threshold: z.number().default(60000),
+  om_mode: z.enum(["static", "dynamic"]),
+  om_model: z.string(),
+  om_scope: z.enum(["thread", "resource"]),
+  om_observation_threshold: z.number(),
+  om_reflection_threshold: z.number(),
 });
 
 const serverSchema = z.object({

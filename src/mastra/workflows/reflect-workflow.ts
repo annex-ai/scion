@@ -40,12 +40,13 @@ import {
   updateMetrics,
   updateState,
 } from "../lib/adaptation-storage";
-import type { AdaptationPattern, Observation, PatternType } from "../lib/adaptation-types";
+import type { AdaptationPattern, Observation, PatternType, SynthesizeReflectorOutput } from "../lib/adaptation-types";
 import {
   JACCARD_SIMILARITY_THRESHOLD,
   PATTERN_ARCHIVE_THRESHOLD_DAYS,
   PATTERN_STALE_THRESHOLD_RUNS,
   PATTERN_VALIDATE_THRESHOLD_OCCURRENCES,
+  synthesizeReflectorSchema,
 } from "../lib/adaptation-types";
 import { tokenize } from "../lib/reflection-utils";
 
@@ -149,6 +150,125 @@ const loadDataStep = createStep({
 });
 
 // ============================================================================
+// LLM Synthesis Helpers
+// ============================================================================
+
+const MAX_PROMPT_OBSERVATIONS = 25;
+const MAX_PROMPT_PATTERNS = 40;
+
+/**
+ * Build a prompt for the reflector agent with observations and existing patterns.
+ * Excludes stale patterns to reduce noise.
+ */
+function buildSynthesizePrompt(observations: Observation[], patterns: AdaptationPattern[]): string {
+  const sections: string[] = [];
+
+  // Filter out stale patterns and cap
+  const activePatterns = patterns.filter((p) => p.state !== "stale").slice(0, MAX_PROMPT_PATTERNS);
+
+  if (activePatterns.length > 0) {
+    const patternLines = activePatterns.map(
+      (p) =>
+        `- ID: ${p.id} | State: ${p.state} | Type: ${p.type} | Confidence: ${p.confidence.toFixed(2)} | Occurrences: ${p.occurrences}\n  Pattern: ${p.pattern}\n  Guidance: ${p.guidance}`,
+    );
+    sections.push(`## Existing Patterns (${activePatterns.length})\n\n${patternLines.join("\n\n")}`);
+  }
+
+  const cappedObs = observations.slice(0, MAX_PROMPT_OBSERVATIONS);
+  const obsLines = cappedObs.map(
+    (o) =>
+      `- ID: ${o.id} | Type: ${o.type} | Confidence: ${o.confidence.toFixed(2)}\n  Content: ${o.content}\n  Context: ${o.context}`,
+  );
+  sections.push(`## New Observations (${cappedObs.length})\n\n${obsLines.join("\n\n")}`);
+
+  return `Analyze the following observations and existing patterns. Match observations to patterns (reinforcements), create new patterns from unmatched observations, and flag contradictions.\n\n${sections.join("\n\n")}`;
+}
+
+/**
+ * Process reflector agent output into pattern mutations.
+ * Silently skips hallucinated IDs.
+ */
+function processReflectorOutput(
+  output: SynthesizeReflectorOutput,
+  observations: Observation[],
+  patterns: AdaptationPattern[],
+): {
+  patternsCreated: number;
+  patternsReinforced: number;
+  newPatterns: AdaptationPattern[];
+  reinforcedPatternIds: Set<string>;
+} {
+  const obsMap = new Map(observations.map((o) => [o.id, o]));
+  const patMap = new Map(patterns.map((p) => [p.id, p]));
+  const reinforcedPatternIds = new Set<string>();
+  let patternsReinforced = 0;
+
+  // Process reinforcements
+  for (const r of output.reinforcements) {
+    const obs = obsMap.get(r.observationId);
+    const pat = patMap.get(r.patternId);
+    if (!obs || !pat) continue;
+
+    reinforcePattern(pat, obs);
+    reinforcedPatternIds.add(pat.id);
+    obs.linkedPatternId = pat.id;
+    patternsReinforced++;
+  }
+
+  // Process contradictions
+  for (const c of output.contradictions) {
+    const pat = patMap.get(c.patternId);
+    const obs = obsMap.get(c.observationId);
+    if (!pat || !obs) continue;
+
+    pat.confidence = Math.max(0, pat.confidence - 0.1);
+    console.log(
+      `[Reflect Workflow] Contradiction: pattern ${pat.id} (confidence now ${pat.confidence.toFixed(2)}): ${c.explanation}`,
+    );
+  }
+
+  // Process new patterns
+  const now = new Date().toISOString();
+  const newPatterns: AdaptationPattern[] = [];
+
+  for (const np of output.newPatterns) {
+    // Resolve source observations, skip if none are valid
+    const validSourceIds = np.sourceObservationIds.filter((id) => obsMap.has(id));
+    if (validSourceIds.length === 0) continue;
+
+    const newPattern: AdaptationPattern = {
+      id: generateId(),
+      type: np.type,
+      pattern: np.pattern,
+      guidance: np.guidance,
+      state: "active",
+      createdAt: now,
+      lastReinforcedAt: now,
+      runsWithoutReinforcement: 0,
+      confidence: np.confidence,
+      occurrences: 1,
+      sourceObservations: validSourceIds,
+      coachingPriority: np.coachingPriority,
+    };
+
+    // Link observations to this pattern
+    for (const id of validSourceIds) {
+      const obs = obsMap.get(id);
+      if (obs) obs.linkedPatternId = newPattern.id;
+    }
+
+    newPatterns.push(newPattern);
+  }
+
+  return {
+    patternsCreated: newPatterns.length,
+    patternsReinforced,
+    newPatterns,
+    reinforcedPatternIds,
+  };
+}
+
+// ============================================================================
 // Step 3: Synthesize Patterns
 // ============================================================================
 
@@ -158,13 +278,12 @@ const synthesizeStep = createStep({
   inputSchema: loadDataOutputSchema,
   outputSchema: synthesizeOutputSchema,
 
-  execute: async ({ inputData }) => {
+  execute: async ({ inputData, mastra }) => {
     const observations = inputData.observations as Observation[];
     const patterns = inputData.patterns as AdaptationPattern[];
 
     if (observations.length === 0) {
       console.log("[Reflect Workflow] No observations to process");
-      // Still need to check for staleness
       const { staled, updated } = applyStaleTransitions(patterns);
       return {
         resourceId: inputData.resourceId,
@@ -178,39 +297,72 @@ const synthesizeStep = createStep({
 
     let patternsCreated = 0;
     let patternsReinforced = 0;
-    const reinforcedPatternIds = new Set<string>();
-    const newPatterns: AdaptationPattern[] = [];
+    let reinforcedPatternIds = new Set<string>();
+    let createdPatterns: AdaptationPattern[] = [];
+    let synthesisMethod = "heuristic";
 
-    // Process each observation
-    for (const obs of observations) {
-      const matchedPattern = findBestMatchingPattern(obs, patterns);
+    // Try LLM synthesis first (with full fallback to heuristic)
+    try {
+      const reflector = mastra?.getAgentById("reflector-agent");
+      if (reflector) {
+        const prompt = buildSynthesizePrompt(observations, patterns);
+        const result = await reflector.generate(prompt, {
+          structuredOutput: { schema: synthesizeReflectorSchema },
+          modelSettings: { temperature: 0 },
+        });
 
-      if (matchedPattern) {
-        // Reinforce existing pattern
-        reinforcePattern(matchedPattern, obs);
-        reinforcedPatternIds.add(matchedPattern.id);
-        obs.linkedPatternId = matchedPattern.id;
-        patternsReinforced++;
+        const llmOutput = result.object as SynthesizeReflectorOutput | undefined;
+        if (llmOutput) {
+          const processed = processReflectorOutput(llmOutput, observations, patterns);
+          patternsReinforced = processed.patternsReinforced;
+          reinforcedPatternIds = processed.reinforcedPatternIds;
+
+          // Deduplicate LLM-created patterns
+          createdPatterns = mergeSimilarPatterns(processed.newPatterns);
+          patternsCreated = createdPatterns.length;
+          synthesisMethod = "LLM";
+        } else {
+          console.warn("[Reflect Workflow] Reflector returned no structured output, using heuristic fallback");
+        }
       } else {
-        // Create new pattern from observation
-        const newPattern = createPatternFromObservation(obs);
-        newPatterns.push(newPattern);
-        obs.linkedPatternId = newPattern.id;
-        patternsCreated++;
+        console.warn("[Reflect Workflow] Mastra context not available, using heuristic fallback");
       }
+    } catch (err) {
+      console.warn(`[Reflect Workflow] LLM synthesis failed, using heuristic fallback: ${err}`);
     }
 
-    // Merge similar new patterns
-    const mergedNewPatterns = mergeSimilarPatterns(newPatterns);
-    patternsCreated = mergedNewPatterns.length;
+    // Heuristic fallback if LLM path didn't produce results
+    if (synthesisMethod === "heuristic") {
+      const newPatterns: AdaptationPattern[] = [];
+
+      for (const obs of observations) {
+        const matchedPattern = findBestMatchingPattern(obs, patterns);
+
+        if (matchedPattern) {
+          reinforcePattern(matchedPattern, obs);
+          reinforcedPatternIds.add(matchedPattern.id);
+          obs.linkedPatternId = matchedPattern.id;
+          patternsReinforced++;
+        } else {
+          const newPattern = createPatternFromObservation(obs);
+          newPatterns.push(newPattern);
+          obs.linkedPatternId = newPattern.id;
+        }
+      }
+
+      createdPatterns = mergeSimilarPatterns(newPatterns);
+      patternsCreated = createdPatterns.length;
+    }
 
     // Combine all patterns
-    const allPatterns = [...patterns, ...mergedNewPatterns];
+    const allPatterns = [...patterns, ...createdPatterns];
 
-    // Apply state transitions
+    // Always apply stale transitions
     const { staled, updated } = applyStaleTransitions(allPatterns, reinforcedPatternIds);
 
-    console.log(`[Reflect Workflow] Created ${patternsCreated}, reinforced ${patternsReinforced}, staled ${staled}`);
+    console.log(
+      `[Reflect Workflow] [${synthesisMethod}] Created ${patternsCreated}, reinforced ${patternsReinforced}, staled ${staled}`,
+    );
 
     return {
       resourceId: inputData.resourceId,
@@ -235,7 +387,6 @@ const archiveStaleStep = createStep({
 
   execute: async ({ inputData }) => {
     const patterns = inputData.patterns as AdaptationPattern[];
-    const now = new Date();
 
     // Find patterns to archive (stale for 30+ days)
     const toArchive: AdaptationPattern[] = [];

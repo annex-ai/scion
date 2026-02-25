@@ -3,7 +3,6 @@
 
 import { resolve } from "node:path";
 import { Agent } from "@mastra/core/agent";
-// REMOVED: ModelRouterEmbeddingModel - not used after memory delegation to harness
 import {
   BatchPartsProcessor,
   PIIDetector,
@@ -13,7 +12,6 @@ import {
 } from "@mastra/core/processors";
 // REMOVED: TokenLimiterProcessor - compaction replaced by Observational Memory
 import { createAnswerRelevancyScorer, createToxicityScorer } from "@mastra/evals/scorers/prebuilt";
-// REMOVED: fastembed, Memory - memory now delegated to harness for OM support
 import { loadFlows, toWorkflowsRecord } from "../flows";
 import { AGENT_DIR, getFlowsConfig, getLoopConfig, getMemoryConfig, loadAgentConfig } from "../lib/config";
 // REMOVED: getCompactionInstructions - replaced by Observational Memory
@@ -21,24 +19,17 @@ import { getHeartbeatInstructions } from "../lib/instructions/heartbeat";
 import { getPatternInstructions } from "../lib/loop-patterns";
 import { loadSoulFiles } from "../lib/parsers";
 import { mcpClient } from "../mcp_client";
-// REMOVED: sharedMemory - memory now delegated to harness for OM support
+import { interactiveMemory } from "../memory";
 import { getAdaptationProcessor } from "../processors/adaptation-processor";
 import { AdversarialPatternDetector } from "../processors/adversarial-detector";
 import { SecretMaskProcessor } from "../processors/secret-mask-processor";
 import { SecretSanitizerProcessor } from "../processors/secret-sanitizer-processor";
 // REMOVED: TimeCompactionProcessor and TokenCompactionProcessor - replaced by Observational Memory
 import { getUserPreferencesProcessor } from "../processors/user-preferences";
-// REMOVED: storage, vector - memory now delegated to harness
 import { tools } from "../tools";
 import { dynamicFlowRouterWorkflow } from "../workflows/dynamic-flow-router";
 import { nativeFlowExecutionWorkflow } from "../workflows/native-flow-execution-workflow";
 import { workspace } from "../workspace";
-
-// Note: sharedMemory is NOT set on the agent directly. This is intentional.
-// The Harness propagates its OM-enabled dynamic memory to agents that don't have
-// their own memory. By omitting memory here, we allow the harness to provide
-// memory with Observational Memory enabled at runtime.
-// See: src/mastra/harness.ts createDynamicMemory()
 
 /**
  * Load and merge tools (MCP + local)
@@ -223,7 +214,7 @@ export const interactiveAgent = new Agent({
     ${heartbeatSection}
   `;
   },
-  // memory: omitted - harness propagates OM-enabled dynamic memory
+  memory: memoryConfig.om_mode !== "dynamic" ? interactiveMemory : undefined,
   workflows: {
     nativeFlowExecutionWorkflow,
     dynamicFlowRouterWorkflow,

@@ -4,7 +4,9 @@
 import { Agent } from "@mastra/core/agent";
 import { sharedMemory } from "../memory";
 import { coreTools } from "../tools/core-tools";
-
+import { loadAgentConfig } from "../lib/config";
+const agentConfig = await loadAgentConfig();
+const taskModel = agentConfig.models?.task ?? agentConfig.models?.default;
 // Wire core tools to agent - transform array to object keyed by tool.id
 // Using coreTools (not all tools) to prevent circular dependency:
 // agents/task.ts -> tools with workflows -> workflows -> agents/task.ts
@@ -213,7 +215,7 @@ export const taskAgent = new Agent({
     // Fall back to general-purpose if type not recognized
     return DEFAULT_INSTRUCTIONS;
   },
-  model: "zai-coding-plan/glm-4.7",
+  model: taskModel,
   tools: toolsMap,
   memory: sharedMemory,
 });

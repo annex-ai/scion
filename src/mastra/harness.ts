@@ -9,10 +9,7 @@
  * - Mode-based model selection
  * - Tool permission management
  * - Event subscription for TUI/Gateway
- * - Observational Memory with dynamic model resolution
- *
- * Pattern follows mastracode: OM models are read from harness state via
- * requestContext, allowing runtime switching of observer/reflector models.
+ * - Observational Memory (static or dynamic based on om_mode config)
  */
 
 import type { HarnessRequestContext } from "@mastra/core/harness";
@@ -22,7 +19,7 @@ import { Memory } from "@mastra/memory";
 import { z } from "zod";
 import { interactiveAgent } from "./agents/interactive";
 import { getMemoryConfig, getSecurityConfig, loadAgentConfig } from "./lib/config";
-import { getProviderApiKeyEnvVar, resolveModel } from "./lib/resolve-model";
+import { interactiveMemory } from "./memory";
 import { storage, vector } from "./storage";
 import { workspace } from "./workspace";
 
@@ -60,7 +57,7 @@ export type HarnessState = z.infer<typeof stateSchema>;
 
 /**
  * Read harness state from requestContext.
- * Used by the memory factory and OM model functions.
+ * Used by the dynamic memory factory and OM model functions.
  */
 function getHarnessState(requestContext: RequestContext): HarnessState | undefined {
   return (requestContext.get("harness") as HarnessRequestContext<typeof stateSchema> | undefined)?.getState?.();
@@ -68,31 +65,28 @@ function getHarnessState(requestContext: RequestContext): HarnessState | undefin
 
 /**
  * Observer model function — reads the current observer model ID from
- * harness state via requestContext (propagated by OM's agent.generate).
+ * harness state via requestContext, returning a plain string for Mastra's
+ * built-in model router to resolve.
  */
-function getObserverModel(
-  { requestContext }: { requestContext: RequestContext },
-  defaults: { omModel: string },
-) {
+function getObserverModel({ requestContext }: { requestContext: RequestContext }, defaults: { omModel: string }) {
   const state = getHarnessState(requestContext);
-  return resolveModel(state?.observerModelId ?? defaults.omModel);
+  return state?.observerModelId ?? defaults.omModel;
 }
 
 /**
  * Reflector model function — reads the current reflector model ID from
- * harness state via requestContext (propagated by OM's agent.generate).
+ * harness state via requestContext, returning a plain string for Mastra's
+ * built-in model router to resolve.
  */
-function getReflectorModel(
-  { requestContext }: { requestContext: RequestContext },
-  defaults: { omModel: string },
-) {
+function getReflectorModel({ requestContext }: { requestContext: RequestContext }, defaults: { omModel: string }) {
   const state = getHarnessState(requestContext);
-  return resolveModel(state?.reflectorModelId ?? defaults.omModel);
+  return state?.reflectorModelId ?? defaults.omModel;
 }
 
 /**
  * Create dynamic memory factory that reads OM config from harness state.
  * This allows runtime switching of OM models and thresholds.
+ * Only used when om_mode === "dynamic".
  */
 function createDynamicMemory(defaults: {
   omModel: string;
@@ -123,7 +117,7 @@ function createDynamicMemory(defaults: {
       vector,
       options: {
         lastMessages: defaults.lastMessages,
-        workingMemory: { enabled: false }, // Disabled - replaced by OM
+        workingMemory: { enabled: false },
         semanticRecall: {
           topK: defaults.topK,
           messageRange: defaults.messageRange,
@@ -195,20 +189,25 @@ export async function createAgentHarness(config?: AgentHarnessConfig) {
   const fastModel = agentConfig.models?.fast ?? defaultModel;
 
   // OM configuration from agent.toml [memory] section
-  const omModel = memoryConfig.om_model ?? "google/gemini-2.5-flash";
-  const obsThreshold = memoryConfig.om_observation_threshold ?? 50000;
-  const refThreshold = memoryConfig.om_reflection_threshold ?? 60000;
+  const omModel = memoryConfig.om_model;
+  const obsThreshold = memoryConfig.om_observation_threshold;
+  const refThreshold = memoryConfig.om_reflection_threshold;
+  const omMode = memoryConfig.om_mode;
 
-  // Create dynamic memory factory
-  const dynamicMemory = createDynamicMemory({
-    omModel,
-    obsThreshold,
-    refThreshold,
-    lastMessages: memoryConfig.last_messages,
-    topK: memoryConfig.semantic_recall_top_k,
-    messageRange: memoryConfig.semantic_recall_message_range,
-    scope: memoryConfig.semantic_recall_scope,
-  });
+  // Memory: static mode uses the same interactiveMemory instance as the agent;
+  // dynamic mode creates a factory that reads model IDs from harness state.
+  const memory =
+    omMode === "dynamic"
+      ? (createDynamicMemory({
+          omModel,
+          obsThreshold,
+          refThreshold,
+          lastMessages: memoryConfig.last_messages,
+          topK: memoryConfig.semantic_recall_top_k,
+          messageRange: memoryConfig.semantic_recall_message_range,
+          scope: memoryConfig.semantic_recall_scope,
+        }) as any)
+      : interactiveMemory;
 
   // Modes — same agent, different default models
   const modes = [
@@ -228,20 +227,18 @@ export async function createAgentHarness(config?: AgentHarnessConfig) {
   ];
 
   console.log(`[harness] Creating harness with default model: ${defaultModel}, fast model: ${fastModel}`);
-  console.log(`[harness] OM model: ${omModel}, obs threshold: ${obsThreshold}, ref threshold: ${refThreshold}`);
+  console.log(
+    `[harness] OM mode: ${omMode}, model: ${omModel}, obs threshold: ${obsThreshold}, ref threshold: ${refThreshold}`,
+  );
 
-  // Instantiate Harness with dynamic memory
-  // Type assertion needed: dynamic memory is supported at runtime but types
-  // in @mastra/core@1.6.0 don't expose DynamicArgument<MastraMemory> yet
   const harness = new Harness({
     id: "multi-channel-agent",
     resourceId: config?.resourceId || securityConfig.resource_id,
     storage,
-    memory: dynamicMemory as any,
+    memory,
     workspace,
     stateSchema,
     modes,
-    resolveModel,
     toolCategoryResolver,
     initialState: {
       currentModelId: defaultModel,
@@ -256,8 +253,3 @@ export async function createAgentHarness(config?: AgentHarnessConfig) {
 
   return { harness };
 }
-
-/**
- * Get API key environment variable for the current model
- */
-export { getProviderApiKeyEnvVar };
