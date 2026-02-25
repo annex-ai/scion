@@ -23,6 +23,7 @@ import { registerSessionsCommands } from "./commands/sessions.js";
 import { registerSetupCommand } from "./commands/setup.js";
 import { registerSkillsCommands } from "./commands/skills.js";
 import { registerStatusCommands } from "./commands/status.js";
+import { registerTUICommands } from "./commands/tui.js";
 
 const require = createRequire(import.meta.url);
 const packageJson = require("../../package.json");
@@ -48,6 +49,7 @@ async function main() {
   registerLogsCommands(program); // logs
   registerSetupCommand(program); // setup/onboard
   registerCronCommands(program); // cron jobs
+  registerTUICommands(program); // interactive TUI
 
   await program.parseAsync(process.argv);
 }

@@ -61,6 +61,7 @@
   "dependencies": {
     "@ai-sdk/google": "^3.0.20",
     "@ai-sdk/openai-compatible": "^2.0.26",
+    "@mariozechner/pi-tui": "^0.55.0",
     "@mastra/core": "1.6.0",
     "@mastra/evals": "^1.1.2",
     "@mastra/fastembed": "^1.0.0",
