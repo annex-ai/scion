@@ -9,6 +9,8 @@
  * which are then used to generate coaching suggestions.
  */
 
+import { z } from "zod";
+
 // --- Observations (from Observe workflow) ---
 
 export type ObservationType =
@@ -155,3 +157,34 @@ export const PATTERN_VALIDATE_THRESHOLD_OCCURRENCES = 3;
 export const PATTERN_ARCHIVE_THRESHOLD_DAYS = 30;
 export const JACCARD_SIMILARITY_THRESHOLD = 0.7;
 export const MAX_LOCK_AGE_MS = 600000; // 10 minutes
+
+// --- Reflector Agent Schema ---
+
+export const synthesizeReflectorSchema = z.object({
+  reinforcements: z.array(
+    z.object({
+      observationId: z.string(),
+      patternId: z.string(),
+      reason: z.string(),
+    }),
+  ),
+  newPatterns: z.array(
+    z.object({
+      type: z.enum(["attention_signal", "decision_marker", "noise_pattern", "heuristic", "preference"]),
+      pattern: z.string(),
+      guidance: z.string(),
+      confidence: z.number().min(0).max(1),
+      coachingPriority: z.enum(["high", "medium", "low"]),
+      sourceObservationIds: z.array(z.string()),
+    }),
+  ),
+  contradictions: z.array(
+    z.object({
+      patternId: z.string(),
+      observationId: z.string(),
+      explanation: z.string(),
+    }),
+  ),
+});
+
+export type SynthesizeReflectorOutput = z.infer<typeof synthesizeReflectorSchema>;
