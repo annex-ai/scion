@@ -60,6 +60,8 @@ semantic_recall_scope = "resource"
 working_memory_enabled = false
 working_memory_scope = "resource"
 # Observational Memory configuration
+# OM mode: "static" = agent-level memory (works everywhere), "dynamic" = harness-injected (runtime model switching)
+om_mode = "static"
 om_model = "google/gemini-2.5-flash"
 om_scope = "resource"
 om_observation_threshold = 50000  # Baseline: 50k to balance latency vs frequency
