@@ -29,9 +29,8 @@ import { inngest } from "./inngest";
 // Legacy workflow - kept for backwards compatibility during migration
 import { reflectionWorkflow } from "./legacy/reflection-workflow";
 import { reflectorAgent } from "./agents/reflector";
-import { getGatewaySecurityConfig, getSecurityConfig, getServerConfig } from "./lib/config";
+import { getGatewaySecurityConfig, getProjectRoot, getSecurityConfig, getServerConfig } from "./lib/config";
 import { storage } from "./storage";
-import { createHarnessRoutes } from "./harness-routes";
 import { adaptationMasterWorkflow } from "./workflows/adaptation-master";
 import { coachWorkflow } from "./workflows/coach-workflow";
 import { dynamicFlowRouterWorkflow } from "./workflows/dynamic-flow-router";
@@ -39,10 +38,11 @@ import { nativeFlowExecutionWorkflow } from "./workflows/native-flow-execution-w
 import { observeWorkflow } from "./workflows/observe-workflow";
 import { reflectWorkflow } from "./workflows/reflect-workflow";
 import { loadSkillWorkflows, toWorkflowsRecord } from "./workflows/skill-workflow-loader";
+import { workspace } from "./workspace";
 
 // Load skill workflows at module initialization (build-time compilation)
 // This happens once when the server imports this module
-const skillLoadResult = await loadSkillWorkflows(process.cwd());
+const skillLoadResult = await loadSkillWorkflows(getProjectRoot());
 
 // Convert to record for Mastra registration
 const skillWorkflowsRecord = toWorkflowsRecord(skillLoadResult.workflows);
@@ -101,6 +101,7 @@ const authConfig = gatewayApiKey
   : undefined;
 
 export const mastra = new Mastra({
+  workspace,
   workflows: {
     // Existing workflows
     nativeFlowExecutionWorkflow,
@@ -663,10 +664,6 @@ export const mastra = new Mastra({
         },
       },
 
-      // ====================================================================
-      // Harness API — Orchestration layer for gateway communication
-      // ====================================================================
-      ...createHarnessRoutes(),
     ],
   },
   observability: new Observability({
@@ -688,6 +685,3 @@ export const mastra = new Mastra({
 // Export the skill load result for introspection
 export { skillLoadResult };
 
-// Export harness factory for gateway/TUI integration
-// The gateway should use harness.sendMessage() instead of direct agent calls
-export { createAgentHarness } from "./harness";
