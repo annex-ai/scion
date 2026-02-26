@@ -19,13 +19,14 @@ import { existsSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { createStep, createWorkflow } from "@mastra/core/workflows";
 import { z } from "zod";
+import { getProjectRoot } from "../lib/config";
 import { compileSkillToWorkflow } from "./native-flow-compiler";
 
 /**
  * Workspace-based skill file discovery
  *
  * Searches for flow skills in the configured workspace paths.
- * Uses process.cwd() as the workspace root (matching the agent's Workspace config).
+ * Derives workspace root from AGENT_DIR (matching the agent's Workspace config).
  */
 export async function findFlowInWorkspace(
   flowName: string,
@@ -56,8 +57,8 @@ export async function findFlowInWorkspace(
     throw new Error(`Skill file not found at explicit path: ${explicitPath}`);
   }
 
-  // Workspace-based discovery from process.cwd()
-  const workspaceRoot = workingDir || process.cwd();
+  // Workspace-based discovery from project root
+  const workspaceRoot = workingDir || getProjectRoot();
 
   // Standard workspace skill paths (matching agent's Workspace config)
   const skillPaths = [

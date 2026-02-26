@@ -24,6 +24,7 @@ export {
   getFlowsConfig,
   getGatewaySecurityConfig,
   getHeartbeatConfig,
+  getProjectRoot,
   getLoopConfig,
   getMemoryConfig,
   getModelsConfig,

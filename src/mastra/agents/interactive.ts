@@ -68,6 +68,7 @@ async function getMergedTools(): Promise<Record<string, any>> {
 // Load agent config for models
 const agentConfig = await loadAgentConfig(); //added static config so we don't have to pass these configuration options via the gateway over http.
 const defaultModel = agentConfig.models?.default ?? "zai-coding-plan/glm-4.7";
+const fastModel = agentConfig.models?.fast ?? defaultModel;
 const scorerModel = agentConfig.models?.scorer_model ?? "zai-coding-plan/glm-4.5-air";
 // Moderation model for safety processors (defaults to GPT-OSS Safeguard)
 const moderationModel = agentConfig.models?.moderation ?? "openrouter/openai/gpt-oss-safeguard-20b";
@@ -163,7 +164,10 @@ console.log(`[interactive-agent] Loop pattern: ${loopConfig.pattern}`);
 export const interactiveAgent = new Agent({
   id: "interactive-agent",
   name: "Interactive Agent",
-  model: defaultModel,
+  model: ({ requestContext }) => {
+    const mode = requestContext?.get("mode");
+    return mode === "fast" ? fastModel : defaultModel;
+  },
   workspace,
 
   instructions: async ({ requestContext }) => {
@@ -214,7 +218,7 @@ export const interactiveAgent = new Agent({
     ${heartbeatSection}
   `;
   },
-  memory: memoryConfig.om_mode !== "dynamic" ? interactiveMemory : undefined,
+  memory: interactiveMemory,
   workflows: {
     nativeFlowExecutionWorkflow,
     dynamicFlowRouterWorkflow,

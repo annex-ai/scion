@@ -22,7 +22,7 @@ import { storage, vector } from "./storage";
 const memoryConfig = await getMemoryConfig();
 
 console.log(
-  `[memory] Initializing with config: lastMessages=${memoryConfig.last_messages}, topK=${memoryConfig.semantic_recall_top_k}, om_mode=${memoryConfig.om_mode}`,
+  `[memory] Initializing with config: lastMessages=${memoryConfig.last_messages}, topK=${memoryConfig.semantic_recall_top_k}`,
 );
 
 /**
@@ -37,7 +37,10 @@ export const sharedMemory = new Memory({
   vector,
   options: {
     lastMessages: memoryConfig.last_messages,
-    workingMemory: { enabled: false },
+    workingMemory: {
+      enabled: memoryConfig.working_memory_enabled,
+      scope: memoryConfig.working_memory_scope,
+    },
     semanticRecall: {
       topK: memoryConfig.semantic_recall_top_k,
       messageRange: memoryConfig.semantic_recall_message_range,
@@ -52,9 +55,6 @@ export const sharedMemory = new Memory({
  *
  * Uses plain string model IDs (e.g. "google/gemini-2.5-flash") which
  * Mastra's built-in model router resolves natively.
- *
- * Set on the interactive agent when om_mode === "static" (default).
- * The Harness also uses this same instance in static mode.
  */
 const omModel = memoryConfig.om_model;
 
@@ -64,7 +64,10 @@ export const interactiveMemory = new Memory({
   vector,
   options: {
     lastMessages: memoryConfig.last_messages,
-    workingMemory: { enabled: false },
+    workingMemory: {
+      enabled: memoryConfig.working_memory_enabled,
+      scope: memoryConfig.working_memory_scope,
+    },
     semanticRecall: {
       topK: memoryConfig.semantic_recall_top_k,
       messageRange: memoryConfig.semantic_recall_message_range,
@@ -76,15 +79,25 @@ export const interactiveMemory = new Memory({
       observation: {
         model: omModel,
         messageTokens: memoryConfig.om_observation_threshold,
-        modelSettings: { maxOutputTokens: 60000 },
+        maxTokensPerBatch: memoryConfig.om_max_tokens_per_batch,
+        bufferTokens: memoryConfig.om_buffer_tokens,
+        bufferActivation: memoryConfig.om_buffer_activation,
+        blockAfter: memoryConfig.om_observation_block_after,
+        modelSettings: { maxOutputTokens: 100_000 },
+        instruction: memoryConfig.om_observation_instruction || undefined,
       },
       reflection: {
         model: omModel,
         observationTokens: memoryConfig.om_reflection_threshold,
-        modelSettings: { maxOutputTokens: 60000 },
+        bufferActivation: memoryConfig.om_reflection_buffer_activation,
+        blockAfter: memoryConfig.om_reflection_block_after,
+        modelSettings: { maxOutputTokens: 100_000 },
+        instruction: memoryConfig.om_reflection_instruction || undefined,
       },
     },
   },
 });
 
-console.log(`[memory] interactiveMemory: OM enabled with model=${omModel}`);
+console.log(
+  `[memory] interactiveMemory: OM enabled, model=${omModel}, scope=${memoryConfig.om_scope}, bufferTokens=${memoryConfig.om_buffer_tokens}, batchSize=${memoryConfig.om_max_tokens_per_batch}`,
+);

@@ -3,12 +3,12 @@
 
 import { resolve } from "node:path";
 import { LocalFilesystem, LocalSandbox, Workspace } from "@mastra/core/workspace";
-import { AGENT_DIR, getWorkspaceConfig } from "./lib/config";
+import { getProjectRoot, getWorkspaceConfig } from "./lib/config";
 
 const wsConfig = await getWorkspaceConfig();
 
 // Workspace paths resolve relative to the project root (parent of .agent/)
-const projectRoot = resolve(AGENT_DIR, "..");
+const projectRoot = getProjectRoot();
 
 console.log("[workspace] Loading workspace configuration...");
 console.log(`[workspace] workspace_dir: ${wsConfig.workspace_dir}`);

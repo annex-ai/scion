@@ -44,7 +44,7 @@ export const triggerAdaptationTool = createTool({
     }
 
     try {
-      const workflow = mastra.getWorkflow("adaptation");
+      const workflow = mastra.getWorkflow("adaptationMasterWorkflow");
 
       if (!workflow) {
         return {

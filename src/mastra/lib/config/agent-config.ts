@@ -79,11 +79,22 @@ const memorySchema = z.object({
   working_memory_enabled: z.boolean(),
   working_memory_scope: z.enum(["resource", "thread"]),
   // Observational Memory config
-  om_mode: z.enum(["static", "dynamic"]),
+  om_mode: z.enum(["static", "dynamic"]).optional(), // Deprecated: dynamic mode no longer exists
   om_model: z.string(),
   om_scope: z.enum(["thread", "resource"]),
   om_observation_threshold: z.number(),
   om_reflection_threshold: z.number(),
+  // Async buffering (not yet supported with scope: "resource" in @mastra/memory@1.5.0)
+  om_buffer_tokens: z.union([z.number(), z.literal(false)]).default(false),
+  om_buffer_activation: z.number().optional(),
+  om_observation_block_after: z.number().optional(),
+  om_reflection_buffer_activation: z.number().optional(),
+  om_reflection_block_after: z.number().optional(),
+  // Batch processing
+  om_max_tokens_per_batch: z.number().default(10000),
+  // Custom instructions
+  om_observation_instruction: z.string().optional(),
+  om_reflection_instruction: z.string().optional(),
 });
 
 const serverSchema = z.object({
@@ -323,6 +334,9 @@ function findAgentDir(): string {
 
 /** Root of the agent workspace — config, identity, and state files live here */
 export const AGENT_DIR = resolve(process.env.AGENT_DIR || findAgentDir());
+
+/** Project root — parent of .agent/ directory */
+export const getProjectRoot = (): string => resolve(AGENT_DIR, "..");
 
 // ============================================================================
 // Config Paths
