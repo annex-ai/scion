@@ -59,13 +59,27 @@ semantic_recall_scope = "resource"
 # Working memory disabled - replaced by Observational Memory
 working_memory_enabled = false
 working_memory_scope = "resource"
-# Observational Memory configuration
-# OM mode: "static" = agent-level memory (works everywhere), "dynamic" = harness-injected (runtime model switching)
-om_mode = "static"
+
+# Observational Memory
 om_model = "google/gemini-2.5-flash"
 om_scope = "resource"
-om_observation_threshold = 50000  # Baseline: 50k to balance latency vs frequency
-om_reflection_threshold = 60000   # Baseline: 60k (adjust up if latency >500ms)
+om_observation_threshold = 50000
+om_reflection_threshold = 60000
+
+# Async buffering (not yet supported with scope: "resource" in @mastra/memory@1.5.0)
+# Enable when library adds resource-scope support:
+# om_buffer_tokens = 0.2           # Buffer every 20% of observation threshold
+# om_buffer_activation = 0.8       # Retain ~20% of raw messages after activation
+# om_observation_block_after = 1.2 # Force sync observation at 1.2x threshold
+# om_reflection_buffer_activation = 0.7  # Optional: async reflection buffering
+# om_reflection_block_after = 1.5        # Optional: force sync reflection
+
+# Batch processing (for resource-scoped multi-thread observation)
+om_max_tokens_per_batch = 10000
+
+# Custom instructions (uncomment to customize observer/reflector behavior)
+# om_observation_instruction = "Focus on user intent, decisions, and task progress. Avoid redundant summaries."
+# om_reflection_instruction = "Consolidate similar observations. Preserve task context and user preferences."
 
 [security]
 resource_id = "interactive-agent"
