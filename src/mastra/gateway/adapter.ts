@@ -4,7 +4,8 @@
 /**
  * Gateway to Mastra adapter
  *
- * Routes channel messages to the Interactive Agent.
+ * Routes channel messages to the Interactive Agent via Mastra's built-in
+ * `/api/agents/interactiveAgent/generate` endpoint.
  *
  * ## Thread Management
  *
@@ -29,7 +30,7 @@
  * The adapter only passes channel context for callbacks and memory configuration.
  */
 
-import { getSecurityConfig } from "../lib/config";
+import { getMemoryConfig, getSecurityConfig } from "../lib/config";
 import { formatMediaIntoMessage } from "./channels/media/format.js";
 import { processMediaAttachments } from "./channels/media/understand.js";
 import { createThreadKey, type InboundMessage, type OutboundAttachment } from "./channels/types";
@@ -103,16 +104,22 @@ export class GatewayToMastraAdapter {
   }
 
   /**
-   * Generate a deterministic thread ID from channel info
+   * Generate a deterministic thread ID from channel info.
    *
-   * Format: thread_{channelType}_{channelId}_{threadId}
+   * When memory scope is "resource", returns the resourceId so all
+   * conversations share a single managed thread per resource.
+   * Otherwise uses per-channel format: thread_{channelType}_{channelId}_{threadId}
    *
    * @param channelType - Channel type (slack, telegram, etc.)
    * @param channelId - Channel ID
    * @param threadId - Optional thread ID within the channel
+   * @param resourceId - Optional resourceId override (used when memory scope is "resource")
    * @returns Deterministic thread ID
    */
-  generateThreadId(channelType: string, channelId: string, threadId?: string): string {
+  generateThreadId(channelType: string, channelId: string, threadId?: string, resourceId?: string): string {
+    if (resourceId) {
+      return resourceId;
+    }
     const parts = [channelType, channelId, threadId].filter(Boolean);
     const sanitized = parts.join("_").replace(/[^a-zA-Z0-9]/g, "_");
     return `thread_${sanitized}`;
@@ -130,27 +137,25 @@ export class GatewayToMastraAdapter {
   }
 
   /**
-   * Call the Mastra Harness via HTTP
+   * Call the Mastra agent via HTTP (generate endpoint)
    *
-   * Uses the harness endpoints instead of direct agent calls.
-   * The harness manages:
-   * - Mode-based model selection
-   * - Tool permission system
-   * - Observational Memory with dynamic config
+   * Uses Mastra's built-in `/api/agents/interactiveAgent/generate` endpoint
+   * directly, following the same pattern as alert-handler.ts.
    */
-  private async callHarnessViaHttp(
+  private async callAgentViaHttp(
     message: string,
     channelContext: {
       channelType: string;
       channelId: string;
       threadId: string;
       threadKey: string;
+      resourceId: string;
+      mode?: string;
     },
   ): Promise<{
     text?: string;
-    threadId?: string;
   }> {
-    const url = `${this.mastraUrl}/_harness/sendMessage`;
+    const url = `${this.mastraUrl}/api/agents/interactiveAgent/generate`;
 
     logger.info(
       {
@@ -158,7 +163,7 @@ export class GatewayToMastraAdapter {
         messageLength: message.length,
         channelType: channelContext.channelType,
       },
-      "Calling harness via HTTP",
+      "Calling agent via HTTP",
     );
 
     const headers: Record<string, string> = {
@@ -168,9 +173,9 @@ export class GatewayToMastraAdapter {
       headers.Authorization = `Bearer ${process.env.GATEWAY_API_KEY}`;
     }
 
-    // 2-minute timeout — agent responses can be slow when tool-calling
+    // 10-minute timeout — agent responses can be very slow with tool-calling or large context
     const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 120_000);
+    const timeout = setTimeout(() => controller.abort(), 600_000);
 
     let response: Response;
     try {
@@ -179,10 +184,17 @@ export class GatewayToMastraAdapter {
         headers,
         signal: controller.signal,
         body: JSON.stringify({
-          content: message,
-          channelType: channelContext.channelType,
-          channelId: channelContext.channelId,
-          threadId: channelContext.threadId,
+          messages: [{ role: "user", content: message }],
+          memory: {
+            resource: channelContext.resourceId,
+            thread: channelContext.threadId,
+          },
+          requestContext: {
+            channelType: channelContext.channelType,
+            channelId: channelContext.channelId,
+            sessionKey: channelContext.threadKey,
+            mode: channelContext.mode || "default",
+          },
         }),
       });
     } finally {
@@ -191,68 +203,39 @@ export class GatewayToMastraAdapter {
 
     if (!response.ok) {
       const errorText = await response.text();
-      throw new Error(`Harness HTTP call failed: ${response.status} ${errorText}`);
+      throw new Error(`Agent HTTP call failed: ${response.status} ${errorText}`);
     }
 
     return response.json();
   }
 
   /**
-   * Initialize the harness (call once at startup)
+   * Create a thread via Mastra HTTP API
    */
-  async initHarness(): Promise<void> {
-    const url = `${this.mastraUrl}/_harness/init`;
-
-    const headers: Record<string, string> = {
-      "Content-Type": "application/json",
-    };
+  private async createThread(threadId: string, resourceId: string, title?: string): Promise<void> {
+    const url = `${this.mastraUrl}/api/memory/threads`;
+    const headers: Record<string, string> = { "Content-Type": "application/json" };
     if (process.env.GATEWAY_API_KEY) {
       headers.Authorization = `Bearer ${process.env.GATEWAY_API_KEY}`;
     }
-
-    const response = await fetch(url, { method: "POST", headers });
+    const response = await fetch(url, {
+      method: "POST",
+      headers,
+      body: JSON.stringify({ id: threadId, resourceId, title }),
+    });
     if (!response.ok) {
-      const errorText = await response.text();
-      throw new Error(`Harness init failed: ${response.status} ${errorText}`);
+      throw new Error(`Failed to create thread: ${response.status}`);
     }
-
-    const result = await response.json();
-    logger.info(
-      {
-        currentModeId: result.currentModeId,
-        currentModelId: result.currentModelId,
-        resourceId: result.resourceId,
-      },
-      "Harness initialized",
-    );
   }
 
   /**
-   * Get harness status
+   * Ensure a thread exists, creating it if necessary
    */
-  async getHarnessStatus(): Promise<{
-    initialized: boolean;
-    currentModeId?: string;
-    currentModelId?: string;
-    currentThreadId?: string;
-    resourceId?: string;
-    isRunning?: boolean;
-  }> {
-    const url = `${this.mastraUrl}/_harness/status`;
-
-    const headers: Record<string, string> = {
-      "Content-Type": "application/json",
-    };
-    if (process.env.GATEWAY_API_KEY) {
-      headers.Authorization = `Bearer ${process.env.GATEWAY_API_KEY}`;
+  private async ensureThread(threadId: string, resourceId: string, title?: string): Promise<void> {
+    const existing = await this.getThreadById(threadId);
+    if (!existing) {
+      await this.createThread(threadId, resourceId, title);
     }
-
-    const response = await fetch(url, { headers });
-    if (!response.ok) {
-      return { initialized: false };
-    }
-
-    return response.json();
   }
 
   /**
@@ -261,9 +244,10 @@ export class GatewayToMastraAdapter {
   async processMessage(message: InboundMessage, options?: ProcessOptions): Promise<ProcessMessageResult> {
     const threadKey = createThreadKey(message.channelType, message.channelId, message.threadId);
 
-    const securityConfig = await getSecurityConfig();
-    const memoryThread = this.generateThreadId(message.channelType, message.channelId, message.threadId);
+    const [securityConfig, memoryConfig] = await Promise.all([getSecurityConfig(), getMemoryConfig()]);
     const resourceId = securityConfig.resource_id;
+    const useResourceThread = memoryConfig.semantic_recall_scope === "resource" ? resourceId : undefined;
+    const memoryThread = this.generateThreadId(message.channelType, message.channelId, message.threadId, useResourceThread);
 
     logger.info(
       {
@@ -289,9 +273,6 @@ export class GatewayToMastraAdapter {
       }
     }
 
-    // Note: Request context is now handled by the harness internally
-    // The harness receives channelType, channelId, threadId via the sendMessage payload
-
     let messageText = message.text;
     if (message.attachments?.length) {
       try {
@@ -308,6 +289,10 @@ export class GatewayToMastraAdapter {
       : `${senderContext}${messageText}`;
 
     try {
+      // Ensure the memory thread exists before calling the agent
+      const threadTitle = `${message.channelType}/${message.channelId}${message.threadId ? `/${message.threadId}` : ""}`;
+      await this.ensureThread(memoryThread, resourceId, threadTitle);
+
       logger.info(
         {
           stage: "PRE_GENERATE",
@@ -316,14 +301,16 @@ export class GatewayToMastraAdapter {
           memoryThread,
           messageLength: fullMessage.length,
         },
-        "🚀 About to call harness via HTTP",
+        "🚀 About to call agent via HTTP",
       );
 
-      const response = await this.callHarnessViaHttp(fullMessage, {
+      const response = await this.callAgentViaHttp(fullMessage, {
         channelType: message.channelType,
         channelId: message.channelId,
-        threadId: message.threadId || message.id,
+        threadId: memoryThread,
         threadKey,
+        resourceId,
+        mode: "default",
       });
 
       logger.info(
@@ -332,12 +319,8 @@ export class GatewayToMastraAdapter {
           threadKey,
           responseLength: response.text?.length || 0,
         },
-        "✅ Harness response received",
+        "✅ Agent response received",
       );
-
-      // TODO: Extract attachments from harness events (TTS results, etc.)
-      // For now, attachments are not supported via harness
-      // This can be enhanced by subscribing to harness events via SSE
 
       return {
         text: response.text || "",
