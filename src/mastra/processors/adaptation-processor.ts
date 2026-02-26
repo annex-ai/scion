@@ -12,7 +12,7 @@
 
 import type { ProcessInputArgs, ProcessInputResult, Processor } from "@mastra/core/processors";
 import { claimMatchingSuggestion } from "../lib/adaptation-claim";
-import { ensureAdaptationDirs, loadActivePatterns } from "../lib/adaptation-storage";
+import { ensureAdaptationDirs, loadActivePatterns, loadMetrics, updateDeliveredSuggestion, updateMetrics } from "../lib/adaptation-storage";
 import type { AdaptationPattern, CoachingSuggestion } from "../lib/adaptation-types";
 import { getAdaptationConfig } from "../lib/config";
 
@@ -68,6 +68,15 @@ export class AdaptationProcessor implements Processor<"adaptation"> {
   private enableCoaching: boolean;
   private verbose: boolean;
 
+  // Track last delivered suggestion per resource for implicit feedback
+  private lastDeliveredByResource = new Map<string, {
+    id: string;
+    keywords: string[];
+    deliveredAt: number;
+  }>();
+
+  private static FEEDBACK_WINDOW_MS = 5 * 60 * 1000; // 5 minutes
+
   constructor(options: AdaptationProcessorOptions = {}) {
     this.maxPatterns = options.maxPatterns ?? 15;
     this.enableCoaching = options.enableCoaching ?? true;
@@ -92,6 +101,17 @@ export class AdaptationProcessor implements Processor<"adaptation"> {
 
       ensureAdaptationDirs();
 
+      // --- Feedback check (before claiming new suggestion) ---
+      const resourceId = this.extractResourceId(args);
+      const lastDelivered = this.lastDeliveredByResource.get(resourceId);
+      if (lastDelivered && Date.now() - lastDelivered.deliveredAt < AdaptationProcessor.FEEDBACK_WINDOW_MS) {
+        const lastUserMsg = this.getLastUserMessage(messages);
+        if (lastUserMsg) {
+          await this.recordImplicitFeedback(lastUserMsg, lastDelivered);
+        }
+      }
+      this.lastDeliveredByResource.delete(resourceId);
+
       // 1. Load top N active patterns (sorted by confidence × occurrences)
       const patterns = await loadActivePatterns();
       const topPatterns = patterns
@@ -105,6 +125,13 @@ export class AdaptationProcessor implements Processor<"adaptation"> {
         const lastUserMessage = this.getLastUserMessage(messages);
         if (lastUserMessage) {
           coaching = await claimMatchingSuggestion(lastUserMessage);
+          if (coaching) {
+            this.lastDeliveredByResource.set(resourceId, {
+              id: coaching.id,
+              keywords: coaching.trigger.keywords,
+              deliveredAt: Date.now(),
+            });
+          }
         }
       }
 
@@ -199,6 +226,44 @@ export class AdaptationProcessor implements Processor<"adaptation"> {
       }
     }
     return null;
+  }
+
+  private extractResourceId(args: ProcessInputArgs): string {
+    const ctx = args.requestContext;
+    const resourceId = (ctx?.get as any)?.("resourceId") as string | undefined;
+    return resourceId ?? 'interactive-agent';
+  }
+
+  private async recordImplicitFeedback(
+    userMessage: string,
+    lastDelivered: { id: string; keywords: string[] }
+  ): Promise<void> {
+    const msg = userMessage.toLowerCase();
+    const keywordMatch = lastDelivered.keywords.some(kw => msg.includes(kw.toLowerCase()));
+    const feedbackSignal: 'accepted' | 'noResponse' = keywordMatch ? 'accepted' : 'noResponse';
+
+    try {
+      await updateDeliveredSuggestion(lastDelivered.id, {
+        state: feedbackSignal === 'accepted' ? 'accepted' : 'delivered',
+        respondedAt: new Date().toISOString(),
+        feedbackSignal,
+      });
+
+      // Update delivery metrics
+      const metrics = await loadMetrics();
+      const delivery = metrics?.delivery ?? {
+        totalDelivered: 0, accepted: 0, dismissed: 0, noResponse: 0, acceptanceRate: 0,
+      };
+      if (feedbackSignal === 'accepted') delivery.accepted += 1;
+      else delivery.noResponse += 1;
+      delivery.totalDelivered = delivery.accepted + delivery.noResponse + delivery.dismissed;
+      delivery.acceptanceRate = delivery.totalDelivered > 0
+        ? delivery.accepted / delivery.totalDelivered : 0;
+
+      await updateMetrics('delivery', delivery);
+    } catch (error) {
+      if (this.verbose) console.error('[AdaptationProcessor] Feedback error:', error);
+    }
   }
 
 }

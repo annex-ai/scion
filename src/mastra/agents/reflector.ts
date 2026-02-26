@@ -7,8 +7,6 @@ import { loadAgentConfig } from "../lib/config";
 const agentConfig = await loadAgentConfig();
 const reflectorModel =
   agentConfig.models?.reflector ??
-  agentConfig.models?.moderation ??
-  agentConfig.models?.fast ??
   agentConfig.models?.default;
 
 export const reflectorAgent = new Agent({

@@ -17,9 +17,11 @@ import { z } from "zod";
 import { type CoachingOutput, coachingOutputSchema } from "../agents/coach";
 import { acquireLock, releaseLock } from "../lib/adaptation-lock";
 import {
+  type CoachingHistorySummary,
   ensureAdaptationDirs,
   generateId,
   loadActivePatterns,
+  loadCoachingHistory,
   loadPendingSuggestions,
   loadRecentlyDelivered,
   loadState,
@@ -29,8 +31,9 @@ import {
   updateState,
 } from "../lib/adaptation-storage";
 import type { AdaptationPattern, CoachingPriority, CoachingSuggestion, CoachingType } from "../lib/adaptation-types";
-import { COACHING_DEDUP_WINDOW_DAYS, COACHING_EXPIRATION_DAYS } from "../lib/adaptation-types";
+import { COACHING_DEDUP_WINDOW_DAYS, COACHING_EXPIRATION_DAYS, JACCARD_SIMILARITY_THRESHOLD } from "../lib/adaptation-types";
 import { getAdaptationConfig } from "../lib/config";
+import { isSimilar } from "../lib/reflection-utils";
 import { getUserPreferencesProcessor } from "../processors/user-preferences";
 
 // ============================================================================
@@ -219,23 +222,33 @@ const checkExistingStep = createStep({
     const { candidates, pendingSuggestions, recentlyDelivered } = inputData;
     const config = await getAdaptationConfig();
 
-    // Get pattern IDs that already have suggestions
+    // Load all active patterns for semantic comparison
+    const allActivePatterns = await loadActivePatterns();
+    const patternById = new Map(allActivePatterns.map(p => [p.id, p]));
+
+    // Build covered pattern IDs and texts
     const existingPatternIds = new Set<string>();
+    const coveredTexts: string[] = [];
 
-    for (const suggestion of pendingSuggestions as CoachingSuggestion[]) {
-      for (const patternId of suggestion.sourcePatterns) {
-        existingPatternIds.add(patternId);
+    for (const suggestion of [...pendingSuggestions, ...recentlyDelivered] as CoachingSuggestion[]) {
+      for (const pid of suggestion.sourcePatterns) {
+        existingPatternIds.add(pid);
+        const text = patternById.get(pid)?.pattern;
+        if (text) coveredTexts.push(text);
       }
     }
 
-    for (const suggestion of recentlyDelivered as CoachingSuggestion[]) {
-      for (const patternId of suggestion.sourcePatterns) {
-        existingPatternIds.add(patternId);
+    // Filter: exact ID match OR semantic similarity
+    const filtered = (candidates as AdaptationPattern[]).filter((p) => {
+      if (existingPatternIds.has(p.id)) return false;
+      for (const covered of coveredTexts) {
+        if (isSimilar(p.pattern, covered, JACCARD_SIMILARITY_THRESHOLD)) {
+          console.log(`[Coach] Semantic dedup: "${p.pattern.slice(0, 40)}..." similar to existing`);
+          return false;
+        }
       }
-    }
-
-    // Filter out patterns that already have suggestions
-    const filtered = (candidates as AdaptationPattern[]).filter((p) => !existingPatternIds.has(p.id));
+      return true;
+    });
 
     // Calculate available slots
     const pendingCount = (pendingSuggestions as CoachingSuggestion[]).filter((s) => s.state === "pending").length;
@@ -288,9 +301,18 @@ const generateSuggestionsStep = createStep({
 
     const newSuggestions: CoachingSuggestion[] = [];
 
+    // Load coaching context for prompt enrichment
+    const prefsProcessor = getUserPreferencesProcessor();
+    const prefs = await prefsProcessor.loadPreferences(inputData.resourceId);
+    const history = await loadCoachingHistory(COACHING_DEDUP_WINDOW_DAYS);
+
     for (const pattern of candidates as AdaptationPattern[]) {
       try {
-        const prompt = formatCoachingPrompt(pattern);
+        const prompt = formatCoachingPrompt({
+          pattern,
+          coachingStyle: prefs.coachingStyle,
+          history,
+        });
         const response = await coach.generate(prompt, {
           structuredOutput: { schema: coachingOutputSchema },
           modelSettings: { temperature: 0.3 },
@@ -447,8 +469,16 @@ const releaseLockStep = createStep({
 // Helper Functions
 // ============================================================================
 
-function formatCoachingPrompt(pattern: AdaptationPattern): string {
-  return `Generate a coaching suggestion for this pattern:
+interface CoachingPromptContext {
+  pattern: AdaptationPattern;
+  coachingStyle?: 'direct' | 'subtle' | 'socratic';
+  history?: CoachingHistorySummary;
+}
+
+function formatCoachingPrompt(ctx: CoachingPromptContext): string {
+  const { pattern, coachingStyle, history } = ctx;
+
+  let prompt = `Generate a coaching suggestion for this pattern:
 
 Pattern: "${pattern.pattern}"
 Type: ${pattern.type}
@@ -456,9 +486,35 @@ Guidance: ${pattern.guidance}
 Confidence: ${pattern.confidence.toFixed(2)}
 Occurrences: ${pattern.occurrences}
 Priority: ${pattern.coachingPriority || "medium"}
-${pattern.coachingApproach ? `Approach hint: ${pattern.coachingApproach}` : ""}
+${pattern.coachingApproach ? `Approach hint: ${pattern.coachingApproach}` : ""}`;
 
-Create a non-intrusive, actionable coaching suggestion that can be naturally incorporated into conversation when the right context arises.`;
+  if (coachingStyle) {
+    prompt += `\n\nUser's preferred coaching style: ${coachingStyle}`;
+    const styleGuide = {
+      direct: 'Be clear and straightforward. State the suggestion directly.',
+      subtle: 'Be very gentle. Weave the suggestion into natural conversation.',
+      socratic: 'Ask a question that leads the user to discover the insight themselves.',
+    };
+    prompt += `\n→ ${styleGuide[coachingStyle]}`;
+  }
+
+  if (history && history.totalDelivered > 0) {
+    prompt += `\n\nRecent coaching context:`;
+    prompt += `\n- ${history.totalDelivered} suggestions delivered recently`;
+    if (history.acceptedCount + history.noResponseCount > 0) {
+      prompt += ` (${Math.round(history.acceptanceRate * 100)}% acceptance rate)`;
+    }
+    if (history.recentTopics.length > 0) {
+      prompt += `\n- Recent topics: ${history.recentTopics.join('; ')}`;
+    }
+    prompt += `\n- Vary your approach from recent suggestions.`;
+    if (history.totalDelivered >= 3 && history.acceptanceRate < 0.3) {
+      prompt += `\n- Acceptance rate is low. Try a lighter, more subtle approach.`;
+    }
+  }
+
+  prompt += `\n\nCreate a non-intrusive, actionable coaching suggestion that can be naturally incorporated into conversation when the right context arises.`;
+  return prompt;
 }
 
 function createSuggestionFromOutput(output: CoachingOutput, pattern: AdaptationPattern): CoachingSuggestion {
