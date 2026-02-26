@@ -59,25 +59,6 @@ graph TB
             R_ALERT["POST /api/alerts/heartbeat"]
         end
 
-        subgraph Harness["Harness API (/_harness/)"]
-            R_HINIT["POST /_harness/init"]
-            R_HSTATUS["GET /_harness/status"]
-            R_HSEND["POST /_harness/sendMessage"]
-            R_HEVENTS["GET /_harness/events/:threadId"]
-            R_HSTATE["GET/PATCH /_harness/state"]
-            R_HAPPROVE["POST /_harness/toolApproval"]
-            R_HMODES["GET /_harness/modes"]
-            R_HMODESSW["POST /_harness/modes/switch"]
-            R_HMODELS["GET /_harness/models"]
-            R_HMODELSSW["POST /_harness/models/switch"]
-            R_HTHREADS["GET /_harness/threads"]
-            R_HTHREADSSW["POST /_harness/threads/switch"]
-            R_HTHREADSCR["POST /_harness/threads/create"]
-            R_HTHREADSMSG["GET /_harness/threads/messages"]
-            R_HABORT["POST /_harness/abort"]
-            R_HSTEER["POST /_harness/steer"]
-        end
-
         subgraph Builtin["Mastra Built-in (/api/)"]
             R_GENERATE["POST /api/agents/:id/generate"]
             R_STREAM["POST /api/agents/:id/stream"]
@@ -136,10 +117,8 @@ graph TB
     APIFETCH --> R_LOGS
     APIFETCH --> R_LOGTRANS
 
-    %% Adapter → Server (via Harness API)
-    ADAPT --> R_HINIT
-    ADAPT --> R_HSTATUS
-    ADAPT --> R_HSEND
+    %% Adapter → Server (direct agent call)
+    ADAPT --> R_GENERATE
     ADAPT --> R_THREADS
     ADAPT --> R_THREAD1
     ADAPT --> R_THREADMSG
@@ -160,13 +139,10 @@ graph TB
     classDef gateway fill:#e3f2fd,stroke:#2196f3
     classDef custom fill:#fff3e0,stroke:#ff9800
     classDef builtin fill:#f3e5f5,stroke:#9c27b0
-    classDef harness fill:#fce4ec,stroke:#e91e63
-
     class R_HEALTH,R_STARTUP,R_WEBHOOK,R_SKILLSTAT,R_INNGEST public
     class R_CHANNELS,R_CHSTATUS,R_MSGSEND,R_MEMRESET,R_CRON_LIST,R_CRON_TRIG,R_CRON_RST,R_CRON_RLD,R_LOG_SSE,R_GW_STOP,R_GW_RESTART,R_SKILLS,R_SKILL1 gateway
     class R_WM,R_ALERT custom
     class R_GENERATE,R_STREAM,R_THREADS,R_THREAD1,R_THREADMSG,R_THREADDEL,R_LOGS,R_LOGTRANS builtin
-    class R_HINIT,R_HSTATUS,R_HSEND,R_HEVENTS,R_HSTATE,R_HAPPROVE,R_HMODES,R_HMODESSW,R_HMODELS,R_HMODELSSW,R_HTHREADS,R_HTHREADSSW,R_HTHREADSCR,R_HTHREADSMSG,R_HABORT,R_HSTEER harness
 ```
 
 ## Route Detail Table
@@ -198,35 +174,6 @@ graph TB
 | `/_gateway/v1/gateway/restart` | POST | `client.ts` | CLI `gateway restart` |
 | `/_gateway/v1/skills` | GET | `client.ts` | CLI `skills list` |
 | `/_gateway/v1/skills/:name` | GET | `client.ts` | CLI `skills info` |
-
-### Harness API (`/_harness/`) — auth required
-
-The Harness API provides a single-instance orchestration layer for agent interactions, managing:
-- Mode-based model selection
-- Tool permission system (yolo, per-category, per-tool)
-- Observational Memory with dynamic configuration
-- Event streaming for tool approvals
-
-See [HARNESS.md](HARNESS.md) for detailed architecture documentation.
-
-| Route | Method | Handler | Consumers |
-|-------|--------|---------|-----------|
-| `/_harness/init` | POST | `harness-routes.ts` | Adapter `initHarness()` |
-| `/_harness/status` | GET | `harness-routes.ts` | Adapter `getHarnessStatus()` |
-| `/_harness/sendMessage` | POST | `harness-routes.ts` | Adapter `callHarnessViaHttp()` |
-| `/_harness/events/:threadId` | GET | `harness-routes.ts` | SSE stream for harness events |
-| `/_harness/state` | GET/PATCH | `harness-routes.ts` | State management (yolo, OM config) |
-| `/_harness/toolApproval` | POST | `harness-routes.ts` | Tool approval responses |
-| `/_harness/modes` | GET | `harness-routes.ts` | List available modes |
-| `/_harness/modes/switch` | POST | `harness-routes.ts` | Switch agent mode |
-| `/_harness/models` | GET | `harness-routes.ts` | List available models |
-| `/_harness/models/switch` | POST | `harness-routes.ts` | Switch current model |
-| `/_harness/threads` | GET | `harness-routes.ts` | List harness threads |
-| `/_harness/threads/switch` | POST | `harness-routes.ts` | Switch to thread |
-| `/_harness/threads/create` | POST | `harness-routes.ts` | Create new thread |
-| `/_harness/threads/messages` | GET | `harness-routes.ts` | Get thread messages |
-| `/_harness/abort` | POST | `harness-routes.ts` | Abort current operation |
-| `/_harness/steer` | POST | `harness-routes.ts` | Steer agent mid-stream |
 
 ### Custom `/api/` Routes — auth required
 
@@ -283,19 +230,14 @@ See [HARNESS.md](HARNESS.md) for detailed architecture documentation.
 
 All calls are raw HTTP with auth header, by design (security boundary).
 
-The adapter now uses the **Harness API** for message processing, which provides:
-- Singleton harness instance (avoids memory leaks from MCP tools)
-- Mode-based model selection
-- Observational Memory with dynamic configuration
-- Tool permission system
+The adapter calls the agent's generate endpoint directly (same pattern as the alert handler).
 
 | Method | Route | Purpose |
 |--------|-------|---------|
-| `initHarness()` | `POST /_harness/init` | Initialize harness at startup |
-| `getHarnessStatus()` | `GET /_harness/status` | Check harness status |
-| `callHarnessViaHttp()` | `POST /_harness/sendMessage` | Process inbound messages via harness |
+| `callAgentViaHttp()` | `POST /api/agents/interactiveAgent/generate` | Process inbound messages |
 | `listThreads()` | `GET /api/memory/threads?resourceId=` | Find threads for resource |
 | `getThreadById()` | `GET /api/memory/threads/:id` | Resolve thread for session |
+| `createThread()` | `POST /api/memory/threads` | Create thread if not exists |
 | `getThreadMessages()` | `GET /api/memory/threads/:id/messages` | Fetch conversation history |
 | `deleteThread()` | `DELETE /api/memory/threads/:id` | Delete threads (memory reset) |
 | `getWorkingMemory()` | `GET /api/memory/working-memory?resourceId=` | Resource-scoped working memory |

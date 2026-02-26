@@ -219,11 +219,15 @@ Automatic long-context memory management that replaces manual compaction. OM run
 
 ```toml
 # agent.toml [memory] section
-om_mode = "static"                # agent-level memory (works everywhere)
 om_model = "google/gemini-2.5-flash"
 om_scope = "resource"             # cross-thread (default for always-on agents)
 om_observation_threshold = 50000  # tokens before observation pass
 om_reflection_threshold = 60000   # tokens before reflection pass
+om_max_tokens_per_batch = 10000   # batch size for multi-thread observation
+# Async buffering (not yet supported with scope: "resource" in @mastra/memory@1.5.0)
+# om_buffer_tokens = 0.2          # async buffering at 20% of threshold
+# om_buffer_activation = 0.8      # retain ~20% raw messages after activation
+# om_observation_block_after = 1.2 # force sync at 1.2x threshold
 ```
 
 **Characteristics:**
@@ -235,10 +239,6 @@ om_reflection_threshold = 60000   # tokens before reflection pass
 **Scope choice:**
 - **Resource** (default): Best for always-on interactive agents receiving inputs from multiple channels across time horizons. Observations build a unified picture of the user.
 - **Thread**: Best when you need memory isolation between conversations. Each thread's observations are independent.
-
-**Mode choice (`om_mode`):**
-- **Static** (default): OM is set directly on the agent. Works everywhere — Studio, API, workflows, harness. Agent and harness share the same `interactiveMemory` instance.
-- **Dynamic**: OM is injected by the harness at runtime via a factory. Allows per-thread model switching but only works through the harness.
 
 **Use cases:**
 - Automatic context compression for long conversations
@@ -639,7 +639,7 @@ Different agents use separate Memory instances with different OM configurations:
 - Full memory (recent, semantic, OM)
 - Observational Memory enabled (resource-scoped)
 - Shared storage/vector backends
-- Works everywhere: Studio, API, workflows, harness
+- Works everywhere: Studio, API, workflows
 
 **Task Agent** (`sharedMemory`):
 - Memory without OM overhead (recent + semantic only)
@@ -756,12 +756,16 @@ new Memory({
       observation: {
         model: "google/gemini-2.5-flash",
         messageTokens: 50000,
-        modelSettings: { maxOutputTokens: 60000 },
+        maxTokensPerBatch: 10000,
+        bufferTokens: 0.2,
+        bufferActivation: 0.8,
+        blockAfter: 1.2,
+        modelSettings: { maxOutputTokens: 100_000 },
       },
       reflection: {
         model: "google/gemini-2.5-flash",
         observationTokens: 60000,
-        modelSettings: { maxOutputTokens: 60000 },
+        modelSettings: { maxOutputTokens: 100_000 },
       },
     },
   },
