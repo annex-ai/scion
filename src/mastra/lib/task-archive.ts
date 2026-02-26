@@ -8,6 +8,8 @@
  * Used by the TaskArchive tool and potentially by heartbeat alerts.
  */
 
+import { createHash } from "node:crypto";
+import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { mkdir, readdir, unlink } from "node:fs/promises";
 import { resolve } from "node:path";
 import { parseAllTasks } from "../tools/task-helpers";
@@ -74,11 +76,11 @@ export function extractTaskSection(markdown: string): string {
 /**
  * Generates a fast, non-cryptographic hash of the task section.
  *
- * Uses Bun.hash for speed — we're detecting accidental changes, not attacks.
+ * Uses SHA-256 truncated to 16 hex chars — we're detecting accidental changes, not attacks.
  */
 export function hashTaskSection(markdown: string): string {
   const taskSection = extractTaskSection(markdown);
-  return Bun.hash(taskSection).toString(16);
+  return createHash("sha256").update(taskSection).digest("hex").slice(0, 16);
 }
 
 // ============================================================================
@@ -152,9 +154,8 @@ export async function archiveWorkingMemory(markdown: string, opts?: ArchiveOptio
   // Read existing content
   let existing = "";
   try {
-    const file = Bun.file(archivePath);
-    if (await file.exists()) {
-      existing = await file.text();
+    if (existsSync(archivePath)) {
+      existing = readFileSync(archivePath, "utf-8");
     }
   } catch {
     // File doesn't exist yet — that's fine
@@ -162,7 +163,7 @@ export async function archiveWorkingMemory(markdown: string, opts?: ArchiveOptio
 
   // Append
   const newContent = existing + (existing && !existing.endsWith("\n") ? "\n" : "") + archiveSection;
-  await Bun.write(archivePath, newContent);
+  writeFileSync(archivePath, newContent, "utf-8");
 
   console.log(
     JSON.stringify({
@@ -242,7 +243,7 @@ export async function backupWorkingMemory(markdown: string): Promise<string> {
   const backupPath = resolve(backupDir, filename);
 
   // Write backup
-  await Bun.write(backupPath, markdown);
+  writeFileSync(backupPath, markdown, "utf-8");
   console.log(`${LOG_PREFIX} Backup written to ${backupPath}`);
 
   // Cleanup old backups (keep last 5)

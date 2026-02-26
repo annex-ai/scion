@@ -101,7 +101,7 @@ const runObserveStep = createStep({
 
     try {
       console.log("[Adaptation Master] Starting observe stage");
-      const workflow = mastra?.getWorkflow("observe-workflow");
+      const workflow = mastra?.getWorkflow("observeWorkflow");
 
       if (!workflow) {
         console.error("[Adaptation Master] observe-workflow not found");
@@ -162,7 +162,7 @@ const runReflectStep = createStep({
 
     try {
       console.log("[Adaptation Master] Starting reflect stage");
-      const workflow = mastra?.getWorkflow("reflect-workflow");
+      const workflow = mastra?.getWorkflow("reflectWorkflow");
 
       if (!workflow) {
         console.error("[Adaptation Master] reflect-workflow not found");
@@ -237,7 +237,7 @@ const runCoachStep = createStep({
 
     try {
       console.log("[Adaptation Master] Starting coach stage");
-      const workflow = mastra?.getWorkflow("coach-workflow");
+      const workflow = mastra?.getWorkflow("coachWorkflow");
 
       if (!workflow) {
         console.error("[Adaptation Master] coach-workflow not found");
