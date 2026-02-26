@@ -8,7 +8,7 @@
  * between concurrent workflow runs (cron vs manual triggers).
  */
 
-import { existsSync, mkdirSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, unlinkSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { MAX_LOCK_AGE_MS } from "./adaptation-types";
 import { AGENT_DIR } from "./config";
@@ -63,8 +63,10 @@ export async function acquireLock(name: string, maxAgeMs: number = MAX_LOCK_AGE_
 
   try {
     // Check for existing lock
-    const file = Bun.file(lockPath);
-    const existing = await file.text().catch(() => null);
+    let existing: string | null = null;
+    if (existsSync(lockPath)) {
+      try { existing = readFileSync(lockPath, "utf-8"); } catch { existing = null; }
+    }
 
     if (existing) {
       try {
@@ -97,7 +99,7 @@ export async function acquireLock(name: string, maxAgeMs: number = MAX_LOCK_AGE_
       timestamp: Date.now(),
       workflow: name,
     };
-    await Bun.write(lockPath, JSON.stringify(lockData, null, 2));
+    writeFileSync(lockPath, JSON.stringify(lockData, null, 2), "utf-8");
     console.log(`[adaptation-lock] Acquired lock '${name}'`);
     return true;
   } catch (error) {
@@ -115,22 +117,22 @@ export async function releaseLock(name: string): Promise<void> {
   const lockPath = getLockPath(name);
 
   try {
-    const file = Bun.file(lockPath);
-    if (await file.exists()) {
+    if (existsSync(lockPath)) {
       // Only delete if we own the lock
-      const existing = await file.text().catch(() => null);
+      let existing: string | null = null;
+      try { existing = readFileSync(lockPath, "utf-8"); } catch { existing = null; }
       if (existing) {
         try {
           const lockData: LockData = JSON.parse(existing);
           if (lockData.pid === process.pid) {
-            await file.delete();
+            unlinkSync(lockPath);
             console.log(`[adaptation-lock] Released lock '${name}'`);
           } else {
             console.warn(`[adaptation-lock] Not releasing lock '${name}' - owned by process ${lockData.pid}`);
           }
         } catch {
           // Invalid lock file, delete it
-          await file.delete();
+          unlinkSync(lockPath);
         }
       }
     }
@@ -149,8 +151,9 @@ export async function isLockHeld(name: string): Promise<boolean> {
   const lockPath = getLockPath(name);
 
   try {
-    const file = Bun.file(lockPath);
-    const existing = await file.text().catch(() => null);
+    if (!existsSync(lockPath)) return false;
+    let existing: string | null = null;
+    try { existing = readFileSync(lockPath, "utf-8"); } catch { return false; }
 
     if (!existing) return false;
 

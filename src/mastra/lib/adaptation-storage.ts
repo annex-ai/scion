@@ -8,15 +8,17 @@
  * state, and metrics files in the .agent/adaptation/ directory.
  */
 
-import { existsSync, mkdirSync, readdirSync, renameSync, unlinkSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, readdirSync, renameSync, unlinkSync, writeFileSync } from "node:fs";
 import { basename, dirname, resolve } from "node:path";
 import type {
   AdaptationMetrics,
   AdaptationPattern,
   AdaptationState,
   CoachingSuggestion,
+  CoachingType,
   Observation,
 } from "./adaptation-types";
+import { COACHING_DEDUP_WINDOW_DAYS } from "./adaptation-types";
 import { AGENT_DIR } from "./config";
 
 // Base directory for adaptation data
@@ -68,9 +70,8 @@ export function ensureAdaptationDirs(): void {
  */
 async function readJson<T>(path: string): Promise<T | null> {
   try {
-    const file = Bun.file(path);
-    if (!(await file.exists())) return null;
-    const text = await file.text();
+    if (!existsSync(path)) return null;
+    const text = readFileSync(path, "utf-8");
     return JSON.parse(text) as T;
   } catch (error) {
     console.error(`[adaptation-storage] Failed to read ${path}:`, error);
@@ -87,7 +88,7 @@ async function writeJson<T>(path: string, data: T): Promise<boolean> {
     if (!existsSync(dir)) {
       mkdirSync(dir, { recursive: true });
     }
-    await Bun.write(path, JSON.stringify(data, null, 2));
+    writeFileSync(path, JSON.stringify(data, null, 2), "utf-8");
     return true;
   } catch (error) {
     console.error(`[adaptation-storage] Failed to write ${path}:`, error);
@@ -313,6 +314,66 @@ export async function moveToExpired(suggestions: CoachingSuggestion[]): Promise<
   const merged = [...existing, ...suggestions];
 
   return writeJson(expiredPath, merged);
+}
+
+/**
+ * Update a delivered suggestion by ID, scanning recent day-files.
+ */
+export async function updateDeliveredSuggestion(
+  suggestionId: string,
+  updates: Partial<Pick<CoachingSuggestion, 'state' | 'respondedAt' | 'feedbackSignal'>>,
+  daysBack = COACHING_DEDUP_WINDOW_DAYS
+): Promise<boolean> {
+  for (let i = 0; i < daysBack; i++) {
+    const date = new Date();
+    date.setDate(date.getDate() - i);
+
+    const monthStr = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
+    const dayStr = String(date.getDate()).padStart(2, "0");
+    const filePath = resolve(COACHING_DELIVERED_DIR, monthStr, `${dayStr}.json`);
+
+    const suggestions = await readJson<CoachingSuggestion[]>(filePath);
+    if (!suggestions) continue;
+
+    const index = suggestions.findIndex(s => s.id === suggestionId);
+    if (index !== -1) {
+      suggestions[index] = { ...suggestions[index], ...updates };
+      await writeJson(filePath, suggestions);
+      return true;
+    }
+  }
+  return false;
+}
+
+/**
+ * Summary of recent coaching activity for prompt enrichment.
+ */
+export interface CoachingHistorySummary {
+  totalDelivered: number;
+  recentTopics: string[];
+  recentTypes: CoachingType[];
+  acceptedCount: number;
+  noResponseCount: number;
+  acceptanceRate: number;
+}
+
+/**
+ * Load a summary of recent coaching history.
+ */
+export async function loadCoachingHistory(daysBack = 7): Promise<CoachingHistorySummary> {
+  const delivered = await loadRecentlyDelivered(daysBack);
+  const withFeedback = delivered.filter(s => s.feedbackSignal);
+  const accepted = withFeedback.filter(s => s.feedbackSignal === 'accepted').length;
+  const noResponse = withFeedback.filter(s => s.feedbackSignal === 'noResponse').length;
+
+  return {
+    totalDelivered: delivered.length,
+    recentTopics: delivered.slice(-5).map(s => s.suggestion.slice(0, 100)),
+    recentTypes: [...new Set(delivered.slice(-5).map(s => s.type))],
+    acceptedCount: accepted,
+    noResponseCount: noResponse,
+    acceptanceRate: accepted + noResponse > 0 ? accepted / (accepted + noResponse) : 0,
+  };
 }
 
 // --- Metrics ---

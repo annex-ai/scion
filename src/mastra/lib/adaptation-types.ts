@@ -88,6 +88,10 @@ export interface CoachingSuggestion {
   sourcePatterns: string[]; // pattern IDs
   state: CoachingSuggestionState;
   deliveredAt?: string;
+
+  // Feedback tracking (populated after delivery)
+  respondedAt?: string;
+  feedbackSignal?: 'accepted' | 'noResponse';
 }
 
 // --- State ---

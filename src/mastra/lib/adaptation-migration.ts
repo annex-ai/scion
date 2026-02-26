@@ -7,7 +7,7 @@
  * Converts REFLECTIONS.md patterns to patterns/active.json format.
  */
 
-import { existsSync, renameSync } from "node:fs";
+import { existsSync, readFileSync, renameSync } from "node:fs";
 import { resolve } from "node:path";
 import { ensureAdaptationDirs, generateId, saveActivePatterns } from "./adaptation-storage";
 import type { AdaptationPattern, PatternType } from "./adaptation-types";
@@ -86,7 +86,7 @@ export async function migrateExistingPatterns(): Promise<{
     ensureAdaptationDirs();
 
     // Read and parse the legacy file
-    const content = await Bun.file(LEGACY_REFLECTIONS_PATH).text();
+    const content = readFileSync(LEGACY_REFLECTIONS_PATH, "utf-8");
     const { patterns: legacyPatterns, heuristics } = parseReflectionsMd(content);
 
     // Convert patterns
