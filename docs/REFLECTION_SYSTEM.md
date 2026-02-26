@@ -387,3 +387,15 @@ Processed IDs are pruned to the last 1000 entries to prevent unbounded growth.
 - Output format (REFLECTIONS.md)
 - Pattern types and heuristic format
 - Deduplication via Jaccard word-set similarity
+
+### Reflection → Adaptation System (2026-02)
+
+The Adaptation System builds on top of the reflection pipeline with a more structured approach:
+
+- **Observe → Reflect → Coach** pipeline replaces the single-pass reflection workflow
+- Observations are extracted as typed events (frustration, correction, preference, etc.)
+- Patterns follow a state machine (active → validated → stale → archived)
+- Coaching suggestions are generated from patterns and delivered inline via keyword triggers
+- Legacy `REFLECTIONS.md` patterns can be migrated to the new format
+
+See [ADAPTATION_SYSTEM.md](ADAPTATION_SYSTEM.md) for details.

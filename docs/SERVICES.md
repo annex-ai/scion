@@ -142,6 +142,21 @@ curl -X POST http://localhost:4111/api/workflows/reflection/start-async \
 
 See [REFLECTION_SYSTEM.md](REFLECTION_SYSTEM.md) for details.
 
+## Adaptation Pipeline
+
+The Adaptation System extends the reflection workflow with a three-stage pipeline: **Observe → Reflect → Coach**. It extracts observations from conversations, synthesizes them into patterns, and generates coaching suggestions delivered inline during future conversations.
+
+### Configuration
+
+```toml
+[adaptation]
+enabled = true
+coaching_enabled = true
+coaching_max_pending = 5
+```
+
+See [ADAPTATION_SYSTEM.md](ADAPTATION_SYSTEM.md) for details.
+
 ## Configuration Consistency
 
 All services follow the same configuration pattern:
