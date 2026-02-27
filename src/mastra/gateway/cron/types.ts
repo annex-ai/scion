@@ -18,12 +18,14 @@ import { z } from "zod";
 export type ThreadMode = "shared" | "isolated";
 
 /**
- * Target channel for scheduled message delivery
+ * Target channel for scheduled message delivery.
+ * When channelType is "agent", the schedule is an agent notification —
+ * the agent processes and acts on the message with no external delivery.
  */
 export interface ScheduleTarget {
-  /** Channel type (slack, telegram, etc.) */
+  /** Channel type (slack, telegram, "agent" for agent notification, etc.) */
   channelType: string;
-  /** Channel ID (e.g., #channel-name or channel ID) */
+  /** Channel ID (e.g., #channel-name, channel ID, or "self" for agent notification) */
   channelId: string;
   /** Optional thread ID for threaded conversations */
   threadId?: string;

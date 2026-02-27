@@ -275,9 +275,9 @@ export async function executeSchedule(schedule: Schedule, adapter?: GatewayToMas
 async function sendToTarget(schedule: Schedule, response: string): Promise<void> {
   const { channelType, channelId, threadId } = schedule.target;
 
-  // Agent channel = silent self-reminder, no external delivery
+  // Agent notification — no external delivery needed (agent already acted via processMessage)
   if (channelType === "agent") {
-    console.log(`[cron] Schedule "${schedule.name}" is agent-targeted (self-reminder), skipping external delivery`);
+    console.log(`[cron] Schedule "${schedule.name}" — agent notification, no external delivery needed`);
     return;
   }
 

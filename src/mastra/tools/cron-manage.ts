@@ -46,11 +46,11 @@ export const cronManageTool = createTool({
         'Cron expression (required for add/update). Examples: "0 9 * * 1-5" (9 AM weekdays), "*/30 * * * *" (every 30 min)',
       ),
     message: z.string().optional().describe("Task/message for the agent to execute when triggered (required for add)"),
-    targetChannelType: z.string().optional().describe("Target channel type: slack, telegram, etc. (required for add)"),
+    targetChannelType: z.string().optional().describe("Target channel type: slack, telegram, etc."),
     targetChannelId: z
       .string()
       .optional()
-      .describe("Target channel ID: #channel-name or channel ID (required for add)"),
+      .describe("Target channel ID: #channel-name or channel ID"),
     targetThreadId: z.string().optional().describe("Target thread ID for threaded conversations (optional)"),
     timezone: z.string().optional().describe('IANA timezone, e.g., "America/New_York" (optional, defaults to UTC)'),
     sessionMode: z
@@ -91,8 +91,8 @@ export const cronManageTool = createTool({
 - reset-session: Clear conversation history for a schedule (next run starts fresh)
 
 Target channel:
-- Omit targetChannelType and targetChannelId for self-reminders (auto-detects current channel)
-- Use targetChannelType: 'agent' for silent mode (no external delivery, stays in schedule memory only)
+- Omit target → defaults to agent notification (agent processes and acts on the message)
+- Explicit target (e.g., slack #channel) → delivers result to that channel after agent processes
 
 Session modes:
 - shared (default): All runs share the same conversation history
@@ -161,7 +161,7 @@ Cron expression examples:
             // Also capture threadId for threaded conversations
             targetThreadId = targetThreadId || (rc?.get("threadId") as string | undefined);
           } else {
-            // Fallback to silent agent mode
+            // Default to agent notification
             targetChannelType = "agent";
             targetChannelId = "self";
           }
