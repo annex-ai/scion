@@ -167,16 +167,19 @@ function parseScheduleSection(name: string, lines: string[]): { schedule: Schedu
   if (!message && !workflow) {
     return { schedule: null, error: `Schedule "${name}": missing **Message** or **Workflow** field` };
   }
+  // Default to agent notification when Target is omitted
+  let target: { channelType: string; channelId: string };
   if (!targetStr) {
-    return { schedule: null, error: `Schedule "${name}": missing **Target** field` };
-  }
-
-  const target = parseTarget(targetStr);
-  if (!target) {
-    return {
-      schedule: null,
-      error: `Schedule "${name}": invalid **Target** format (expected "channelType #channelId")`,
-    };
+    target = { channelType: "agent", channelId: "self" };
+  } else {
+    const parsed = parseTarget(targetStr);
+    if (!parsed) {
+      return {
+        schedule: null,
+        error: `Schedule "${name}": invalid **Target** format (expected "channelType #channelId")`,
+      };
+    }
+    target = parsed;
   }
 
   return {
@@ -336,7 +339,10 @@ export function generateCronMd(schedules: Schedule[]): string {
       lines.push(`- **Timezone**: ${schedule.timezone}`);
     }
     lines.push(`- **Message**: ${schedule.message}`);
-    lines.push(`- **Target**: ${schedule.target.channelType} ${schedule.target.channelId}`);
+    // Omit Target line for agent notification (it's the default)
+    if (!(schedule.target.channelType === "agent" && schedule.target.channelId === "self")) {
+      lines.push(`- **Target**: ${schedule.target.channelType} ${schedule.target.channelId}`);
+    }
     // Output ThreadMode if explicitly set to isolated
     if (schedule.threadMode === "isolated") {
       lines.push("- **SessionMode**: isolated");
