@@ -13,7 +13,7 @@ import {
 // REMOVED: TokenLimiterProcessor - compaction replaced by Observational Memory
 import { createAnswerRelevancyScorer, createToxicityScorer } from "@mastra/evals/scorers/prebuilt";
 import { loadFlows, toWorkflowsRecord } from "../flows";
-import { AGENT_DIR, getFlowsConfig, getLoopConfig, getMemoryConfig, loadAgentConfig } from "../lib/config";
+import { AGENT_DIR, getFlowsConfig, getLoopConfig, getMemoryConfig, getProjectRoot, loadAgentConfig } from "../lib/config";
 // REMOVED: getCompactionInstructions - replaced by Observational Memory
 import { getHeartbeatInstructions } from "../lib/instructions/heartbeat";
 import { getPatternInstructions } from "../lib/loop-patterns";
@@ -24,8 +24,10 @@ import { getAdaptationProcessor } from "../processors/adaptation-processor";
 import { AdversarialPatternDetector } from "../processors/adversarial-detector";
 import { SecretMaskProcessor } from "../processors/secret-mask-processor";
 import { SecretSanitizerProcessor } from "../processors/secret-sanitizer-processor";
+import { SlashCommandProcessor } from "../processors/slash-command-processor";
 // REMOVED: TimeCompactionProcessor and TokenCompactionProcessor - replaced by Observational Memory
 import { getUserPreferencesProcessor } from "../processors/user-preferences";
+import { loadCustomCommands } from "../utils/slash-command-loader";
 import { tools } from "../tools";
 import { dynamicFlowRouterWorkflow } from "../workflows/dynamic-flow-router";
 import { nativeFlowExecutionWorkflow } from "../workflows/native-flow-execution-workflow";
@@ -97,6 +99,11 @@ console.log(`[interactive-agent] Loaded ${flowsResult.flows.size} flow(s)`);
 if (flowsResult.errors.length > 0) {
   console.warn(`[interactive-agent] Flow errors: ${flowsResult.errors.length}`);
 }
+
+// Load custom slash commands from all configured directories
+const slashCommands = await loadCustomCommands(getProjectRoot());
+const slashCommandsMap = new Map(slashCommands.map((c) => [c.name, c]));
+console.log(`[interactive-agent] Loaded ${slashCommands.length} slash command(s)`);
 
 const piiDetector = new PIIDetector({
   model: piiDetectionModel,
@@ -226,21 +233,23 @@ export const interactiveAgent = new Agent({
   },
   tools: await getMergedTools(),
   inputProcessors: [
+    // 0. Slash command expansion (before security, so expanded content gets checked)
+    new SlashCommandProcessor({ commands: slashCommandsMap, projectRoot: getProjectRoot() }),
     // Security processors (respect feature flags from agent.toml)
-    // 0. Mask secrets before any other processor can see or log them
+    // 1. Mask secrets before any other processor can see or log them
     ...(secretMaskProcessor ? [secretMaskProcessor] : []),
-    // 1. Normalize Unicode text (zero-cost, deterministic)
+    // 2. Normalize Unicode text (zero-cost, deterministic)
     ...(unicodeNormalizer ? [unicodeNormalizer] : []),
-    // 2. Fast regex-based adversarial pattern detection (zero-cost, zero-latency)
+    // 3. Fast regex-based adversarial pattern detection (zero-cost, zero-latency)
     ...(adversarialPatternDetector ? [adversarialPatternDetector] : []),
-    // 3. LLM-based prompt injection detection (adds ~1 LLM call per message)
+    // 4. LLM-based prompt injection detection (adds ~1 LLM call per message)
     ...(promptInjectionProcessor ? [promptInjectionProcessor] : []),
-    // 4. Context management: REMOVED - now handled by Observational Memory in memory.ts
-    // 5. Skills loading
+    // 5. Context management: REMOVED - now handled by Observational Memory in memory.ts
+    // 6. Skills loading
     new SkillsProcessor({ workspace }),
-    // 6. User preferences
+    // 7. User preferences
     getUserPreferencesProcessor(),
-    // 7. Adaptation (learned patterns + coaching)
+    // 8. Adaptation (learned patterns + coaching)
     getAdaptationProcessor(),
     // Log skills info
     {

@@ -126,7 +126,7 @@ export async function scanCommandDirectory(dirPath: string): Promise<SlashComman
 }
 /**
  * Load custom slash commands from all configured directories
- * Priority: mastra project > claude project > opencode project > mastra user > claude user > opencode user
+ * Priority: agent project > mastra project > claude project > opencode project > agent user > mastra user > claude user > opencode user
  */
 export async function loadCustomCommands(projectDir?: string): Promise<SlashCommandMetadata[]> {
   const commands: SlashCommandMetadata[] = [];
@@ -165,25 +165,39 @@ export async function loadCustomCommands(projectDir?: string): Promise<SlashComm
     addCommands(mastraUserCommands);
   }
 
-  // 4. Load from opencode project directory .opencode/command
+  // 4. Load from agent user directory ~/.agent/commands
+  if (homeDir) {
+    const agentUserDir = path.join(homeDir, '.agent', 'commands');
+    const agentUserCommands = await scanCommandDirectory(agentUserDir);
+    addCommands(agentUserCommands);
+  }
+
+  // 5. Load from opencode project directory .opencode/command
   if (projectDir) {
     const opencodeProjectDir = path.join(projectDir, '.opencode', 'command');
     const opencodeProjectCommands = await scanCommandDirectory(opencodeProjectDir);
     addCommands(opencodeProjectCommands);
   }
 
-  // 5. Load from claude project directory .claude/commands (Claude Code compat)
+  // 6. Load from claude project directory .claude/commands (Claude Code compat)
   if (projectDir) {
     const claudeProjectDir = path.join(projectDir, '.claude', 'commands');
     const claudeProjectCommands = await scanCommandDirectory(claudeProjectDir);
     addCommands(claudeProjectCommands);
   }
 
-  // 6. Load from mastra project directory .mastracode/commands (highest priority)
+  // 7. Load from mastra project directory .mastracode/commands
   if (projectDir) {
     const mastraProjectDir = path.join(projectDir, '.mastracode', 'commands');
     const mastraProjectCommands = await scanCommandDirectory(mastraProjectDir);
     addCommands(mastraProjectCommands);
+  }
+
+  // 8. Load from agent project directory .agent/commands (highest priority)
+  if (projectDir) {
+    const agentProjectDir = path.join(projectDir, '.agent', 'commands');
+    const agentProjectCommands = await scanCommandDirectory(agentProjectDir);
+    addCommands(agentProjectCommands);
   }
 
   return commands;
@@ -193,7 +207,7 @@ export async function loadCustomCommands(projectDir?: string): Promise<SlashComm
  * Get the commands directory path for a project
  */
 export function getProjectCommandsDir(projectDir: string): string {
-  return path.join(projectDir, '.mastracode', 'commands');
+  return path.join(projectDir, '.agent', 'commands');
 }
 
 /**
