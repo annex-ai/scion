@@ -67,7 +67,7 @@
     "@mastra/libsql": "^1.6.0",
     "@mastra/loggers": "^1.0.2",
     "@mastra/mcp": "^1.0.1",
-    "@mastra/memory": "1.5.0",
+    "@mastra/memory": "1.5.2",
     "@mastra/observability": "^1.2.1",
     "@mastra/voice-deepgram": "^0.12.0",
     "@mastra/voice-elevenlabs": "^0.12.0",
