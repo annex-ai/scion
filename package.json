@@ -60,7 +60,7 @@
   },
   "dependencies": {
     "@ai-sdk/google": "^3.0.20",
-    "@mastra/core": "1.6.0",
+    "@mastra/core": "1.8.0",
     "@mastra/evals": "^1.1.2",
     "@mastra/fastembed": "^1.0.0",
     "@mastra/inngest": "^1.1.1",
