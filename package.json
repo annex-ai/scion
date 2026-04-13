@@ -83,7 +83,7 @@
     "croner": "^10.0.1",
     "diff": "^8.0.3",
     "discord.js": "^14.14.1",
-    "file-type": "^21.3.0",
+    "file-type": "^22.0.1",
     "googleapis": "^171.4.0",
     "grammy": "^1.39.3",
     "jszip": "^3.10.1",
