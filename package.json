@@ -73,7 +73,7 @@
     "@mastra/voice-elevenlabs": "^0.12.0",
     "@mastra/voice-google": "^0.12.0",
     "@mastra/voice-openai": "^0.12.0",
-    "@napi-rs/canvas": "^0.1.93",
+    "@napi-rs/canvas": "^1.0.0",
     "@slack/bolt": "^4.6.0",
     "@types/ws": "^8.18.1",
     "@whiskeysockets/baileys": "^6.6.0",
